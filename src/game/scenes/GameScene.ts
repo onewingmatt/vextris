@@ -14,7 +14,14 @@ import {
   LINES_PER_LEVEL,
   PIECES,
   BLOCK_COLORS,
+  LevelParams,
+  getLevelParams,
 } from '../config'
+import { Vex, ScoringContext } from '../vex'
+import { showVexShop } from '../shop'
+import { DevPanel } from '../devPanel'
+import { updateVexBar } from '../vexBar'
+import { setFogHeight } from '../effects/fog'
 
 export class GameScene extends Phaser.Scene {
   private board: Cell[][] = []
@@ -22,18 +29,31 @@ export class GameScene extends Phaser.Scene {
   private nextPiece: Piece | null = null
   private heldPiece: Piece | null = null
   private canHold = true
-  private score = 0
-  private level = INITIAL_LEVEL
+  private score = 0              // total run score
+  private level = INITIAL_LEVEL  // gravity level (separate from progression level)
   private lines = 0
   private gravityTimer = 0
   private gravityDelay = GRAVITY_TABLE[0]
-  private lockDelayTimer = 0
-  private lockDelayActive = false
-  private readonly LOCK_DELAY = 24; // frames (about 0.4s at 60fps)
   private gameOver = false
   private clearingLines: number[] = []
   private scoringClusters: { blocks: { x: number, y: number }[], color: number }[] = []
   private clearTimer = 0
+
+  // --- Level Progression ---
+  private currentLevel = 1
+  private currentLevelScore = 0          // score earned this level only
+  private currentLevelParams!: LevelParams
+  private timeRemaining = 0              // seconds remaining this level
+
+  // --- Vex System ---
+  /** Active Vexes for this run; all always-on once taken. */
+  private activeVexes: Vex[] = []
+  /** Number of scoring moves (line-clears) this run. Used by ScoringContext. */
+  private moveIndex = 0
+  /** Consecutive scoring moves without a break. Unused for now; always 0. */
+  private combo = 0
+  /** True while the between-level shop is open; pauses all game logic. */
+  private shopping = false
 
   private particles: { x: number, y: number, vx: number, vy: number, life: number, color: number }[] = []
   private floatingTexts: { x: number, y: number, text: string, life: number, color: string, scale: number }[] = []
@@ -41,9 +61,14 @@ export class GameScene extends Phaser.Scene {
   private graphics!: Phaser.GameObjects.Graphics
   private gameOverBg!: Phaser.GameObjects.Rectangle
   private gameOverText!: Phaser.GameObjects.Text
-  private scoreValueText!: Phaser.GameObjects.Text
-  private levelValueText!: Phaser.GameObjects.Text
-  private linesValueText!: Phaser.GameObjects.Text
+  // HUD text references
+  private hudLevelText!: Phaser.GameObjects.Text
+  private hudScoreText!: Phaser.GameObjects.Text  // "cur / target"
+  private hudTimeText!: Phaser.GameObjects.Text
+  private hudSpeedText!: Phaser.GameObjects.Text  // gravity speed level
+
+  /** Dev panel — backtick to open/close */
+  private devPanel!: DevPanel
 
   // Input handling
   private leftKey!: Phaser.Input.Keyboard.Key
@@ -65,6 +90,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // Initialise run state (Vexes, level progression, score counters)
+    this.initRun()
+
     // Initialize board
     this.initializeBoard()
 
@@ -81,55 +109,69 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(COLORS.background)
 
     // Board and HUD layout
-    const boardOffsetX = 48; 
-    const boardOffsetY = 112; 
+    const boardOffsetX = 48;
+    const boardOffsetY = 112;
 
     // Create graphics for rendering
     this.graphics = this.add.graphics();
 
-    // HUD: Professional panels and crisp text
-    const hudX = 416; 
+    const hudX = 416;
     let hudY = 112;
-    
+
     // HUD Panel background
     this.add.rectangle(hudX - 16, hudY - 16, 208, 608, 0x111111, 0.6).setOrigin(0, 0).setStrokeStyle(4, 0x333333);
 
     const hudFont = {
-      fontSize: '32px',
+      fontSize: '16px',
       fontFamily: '"Press Start 2P", monospace',
       color: '#ffffff',
     };
-    
-    this.add.text(hudX, hudY, 'SCORE', hudFont).setOrigin(0, 0);
-    this.scoreValueText = this.add.text(hudX, hudY + 32, '0', { ...hudFont, color: '#00BFFF' }).setOrigin(0, 0);
-    hudY += 96;
-    
-    this.add.text(hudX, hudY, 'LEVEL', hudFont).setOrigin(0, 0);
-    this.levelValueText = this.add.text(hudX, hudY + 32, '0', { ...hudFont, color: '#32CD32' }).setOrigin(0, 0);
-    hudY += 96;
-    
-    this.add.text(hudX, hudY, 'LINES', hudFont).setOrigin(0, 0);
-    this.linesValueText = this.add.text(hudX, hudY + 32, '0', { ...hudFont, color: '#FFD700' }).setOrigin(0, 0);
-    hudY += 96;
-    
-    this.add.text(hudX, hudY, 'NEXT', hudFont).setOrigin(0, 0);
-    hudY += 160; 
+    const hudValueFont = { ...hudFont, fontSize: '14px' };
 
+    // LEVEL
+    this.add.text(hudX, hudY, 'LEVEL', hudFont).setOrigin(0, 0);
+    this.hudLevelText = this.add.text(hudX, hudY + 20, '1', { ...hudFont, color: '#32CD32', fontSize: '22px' }).setOrigin(0, 0);
+    hudY += 60;
+
+    // SCORE  (cur / target)
+    this.add.text(hudX, hudY, 'SCORE', hudFont).setOrigin(0, 0);
+    this.hudScoreText = this.add.text(hudX, hudY + 20, '0/800', { ...hudValueFont, color: '#00BFFF' }).setOrigin(0, 0);
+    hudY += 60;
+
+    // TIME
+    this.add.text(hudX, hudY, 'TIME', hudFont).setOrigin(0, 0);
+    this.hudTimeText = this.add.text(hudX, hudY + 20, '180', { ...hudValueFont, color: '#FFD700' }).setOrigin(0, 0);
+    hudY += 60;
+
+    // SPEED (gravity level)
+    this.add.text(hudX, hudY, 'SPEED', hudFont).setOrigin(0, 0);
+    this.hudSpeedText = this.add.text(hudX, hudY + 20, '0', { ...hudValueFont, color: '#FF6347' }).setOrigin(0, 0);
+    hudY += 60;
+
+    // NEXT
+    this.add.text(hudX, hudY, 'NEXT', hudFont).setOrigin(0, 0);
+    hudY += 145;
+
+    // HOLD
     this.add.text(hudX, hudY, 'HOLD', hudFont).setOrigin(0, 0);
-    
-    // Game Over UI: Resize to fit board and add background
+
+    // Game Over UI
     const gameOverX = Math.floor(boardOffsetX + (BOARD_WIDTH * BLOCK_SIZE) / 2);
     const gameOverY = Math.floor(boardOffsetY + (BOARD_HEIGHT * BLOCK_SIZE) / 2);
-    
+
     this.gameOverBg = this.add.rectangle(gameOverX, gameOverY, BOARD_WIDTH * BLOCK_SIZE, 128, 0x000000, 0.8)
       .setVisible(false).setDepth(9);
-      
+
     this.gameOverText = this.add.text(gameOverX, gameOverY, 'GAME OVER', {
       fontSize: '32px',
       fontFamily: '"Press Start 2P", monospace',
       color: '#FF6347',
       align: 'center',
     }).setOrigin(0.5).setShadow(4, 4, '#000', 0, true, true).setVisible(false).setDepth(10);
+
+    // Dev panel (backtick to toggle)
+    this.devPanel = new DevPanel(this.activeVexes, () => { /* no extra action needed */ })
+    this.devPanel.bindKey()
   }
 
 
@@ -214,17 +256,16 @@ export class GameScene extends Phaser.Scene {
 
   private hardDrop() {
     if (!this.currentPiece) return
-      const ghostPos = this.getGhostPosition()
-      if (ghostPos) {
-        this.currentPiece.position = ghostPos
-        
-        // Screen shake and lock immediately
+    const ghostPos = this.getGhostPosition()
+    if (ghostPos) {
+      this.currentPiece.position = ghostPos
+
+      // Screen shake and lock immediately
       this.cameras.main.shake(100, 0.003)
       this.lockPiece()
       this.clearLines()
       this.currentPiece = null
-      this.lockDelayActive = false
-      this.lockDelayTimer = 0
+      this.gravityTimer = 0
     }
   }
 
@@ -233,11 +274,8 @@ export class GameScene extends Phaser.Scene {
     const newPos = { x: this.currentPiece.position.x + dx, y: this.currentPiece.position.y + dy }
     if (this.isValidPosition(this.currentPiece.shape, newPos)) {
       this.currentPiece.position = newPos
-      // If piece is on the ground after move, reset lock delay
-      if (this.isOnGround(this.currentPiece)) {
-        this.lockDelayActive = true;
-        this.lockDelayTimer = 0;
-      }
+      // GB Skating: reset gravity on move
+      this.gravityTimer = 0
       return true
     }
     return false
@@ -257,13 +295,18 @@ export class GameScene extends Phaser.Scene {
         rotatedColors[x][rows - 1 - y] = this.currentPiece.colors[y][x]
       }
     }
-    if (this.isValidPosition(rotated, this.currentPiece.position)) {
-      this.currentPiece.shape = rotated
-      this.currentPiece.colors = rotatedColors
-      // If piece is on the ground after rotate, reset lock delay
-      if (this.isOnGround(this.currentPiece)) {
-        this.lockDelayActive = true;
-        this.lockDelayTimer = 0;
+
+    // Wall Kicks: Try several offsets if initial rotation is blocked
+    const offsets = [0, -1, 1, -2, 2];
+    for (const dx of offsets) {
+      const newPos = { x: this.currentPiece.position.x + dx, y: this.currentPiece.position.y };
+      if (this.isValidPosition(rotated, newPos)) {
+        this.currentPiece.position = newPos;
+        this.currentPiece.shape = rotated;
+        this.currentPiece.colors = rotatedColors;
+        // GB Rotation Stall: reset gravity on rotate
+        this.gravityTimer = 0;
+        return; // Success
       }
     }
   }
@@ -291,18 +334,18 @@ export class GameScene extends Phaser.Scene {
 
   private holdPiece() {
     if (!this.canHold || !this.currentPiece) return;
-    
+
     // Save current piece type
     const typeToHold = this.currentPiece.type;
     const currentHeldType = this.heldPiece ? this.heldPiece.type : null;
-    
+
     // Generate new piece for holding (resetting rotation)
     const holdData = PIECES.find(p => p.type === typeToHold)!;
     const newHeldPiece: Piece = {
-        type: holdData.type,
-        shape: holdData.shape.map(row => [...row]),
-        colors: holdData.shape.map(row => row.map(block => block ? Phaser.Utils.Array.GetRandom(BLOCK_COLORS) : 0)),
-        position: { x: 0, y: 0 }
+      type: holdData.type,
+      shape: holdData.shape.map(row => [...row]),
+      colors: holdData.shape.map(row => row.map(block => block ? Phaser.Utils.Array.GetRandom(BLOCK_COLORS) : 0)),
+      position: { x: 0, y: 0 }
     };
 
     if (currentHeldType) {
@@ -320,11 +363,9 @@ export class GameScene extends Phaser.Scene {
       this.currentPiece.position = { x: Math.floor(BOARD_WIDTH / 2) - Math.floor(this.currentPiece.shape[0].length / 2), y: 0 };
       this.generateNextPiece();
     }
-    
+
     this.heldPiece = newHeldPiece;
     this.canHold = false;
-    this.lockDelayActive = false;
-    this.lockDelayTimer = 0;
     this.gravityTimer = 0;
   }
 
@@ -412,25 +453,20 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  // Returns true if the piece is on the ground (cannot move down)
-  private isOnGround(piece: Piece): boolean {
-    const pos = { x: piece.position.x, y: piece.position.y + 1 };
-    return !this.isValidPosition(piece.shape, pos);
-  }
 
   private drawBlock(x: number, y: number, color: number, alpha: number = 1) {
     const size = BLOCK_SIZE;
-    
+
     // Main block
     this.graphics.fillStyle(color, alpha);
     this.graphics.fillRect(x, y, size, size);
-    
+
     if (alpha === 1) {
       // Light highlight (top and left) - scaled to 4px
       this.graphics.lineStyle(4, 0xffffff, 0.3);
       this.graphics.strokeLineShape(new Phaser.Geom.Line(x + 2, y + 2, x + size - 2, y + 2));
       this.graphics.strokeLineShape(new Phaser.Geom.Line(x + 2, y + 2, x + 2, y + size - 2));
-      
+
       // Dark shadow (bottom and right) - scaled to 4px
       this.graphics.lineStyle(4, 0x000000, 0.4);
       this.graphics.strokeLineShape(new Phaser.Geom.Line(x + 2, y + size - 2, x + size - 2, y + size - 2));
@@ -461,7 +497,7 @@ export class GameScene extends Phaser.Scene {
             // Keep normal color for isolated blocks
           }
         }
-        
+
         const px = Math.floor(boardOffsetX + x * BLOCK_SIZE);
         const py = Math.floor(boardOffsetY + y * BLOCK_SIZE);
 
@@ -502,11 +538,12 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Draw next piece preview
+    // Draw next piece preview — positioned directly under the NEXT label
+    // HUD starts at y=112. Rows: LEVEL(60) + SCORE(60) + TIME(60) + SPEED(60) + NEXT_label(20) = 372 → preview at ~392
     if (this.nextPiece) {
       const { shape, colors } = this.nextPiece;
       const nextX = 416;
-      const nextY = 448;
+      const nextY = 392;
       for (let y = 0; y < shape.length; y++) {
         for (let x = 0; x < shape[y].length; x++) {
           if (shape[y][x]) {
@@ -518,11 +555,12 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Draw held piece preview
+    // Draw held piece preview — positioned directly under the HOLD label
+    // HOLD label is ~145px below NEXT label → ~112 + 60*4 + 145 = 497 → preview at ~517
     if (this.heldPiece) {
       const { shape, colors } = this.heldPiece;
       const holdX = 416;
-      const holdY = 608;
+      const holdY = 537;
       for (let y = 0; y < shape.length; y++) {
         for (let x = 0; x < shape[y].length; x++) {
           if (shape[y][x]) {
@@ -558,38 +596,73 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
-    if (this.gameOver) return;
+    if (this.gameOver || this.shopping) return;
 
     // Line clear animation delay
     if (this.clearTimer > 0) {
       this.clearTimer--;
       if (this.clearTimer === 0) {
-        // --- Scoring Revamp: Color Clusters ---
-        // We MUST score the blocks BEFORE we clear the board rows
+        // --- Scoring: Color Clusters + Vex multipliers ---
+        // We MUST score BEFORE clearing the board rows.
         const linesCleared = this.clearingLines.length;
         this.lines += linesCleared;
 
-        // Feedback: Clear previous floating texts to prevent clutter
+        // Feedback: clear stale floating texts
         this.floatingTexts = [];
 
+        // Step 1: base cluster points (unchanged formula)
         let totalClusterPoints = 0;
-        this.scoringClusters.forEach(cluster => {
+        for (const cluster of this.scoringClusters) {
           totalClusterPoints += cluster.blocks.length * cluster.blocks.length;
-        });
+        }
 
-        const moveScore = totalClusterPoints * linesCleared;
+        // Step 2: build ScoringContext so Vexes can inspect the move
+        const ctx: ScoringContext = {
+          linesCleared,
+          clusters: this.scoringClusters,
+          totalClusterPoints,
+          maxClusterSize: this.scoringClusters.length
+            ? Math.max(...this.scoringClusters.map(c => c.blocks.length))
+            : 0,
+          colorsInMove: new Set(this.scoringClusters.map(c => c.color)),
+          moveIndex: this.moveIndex,
+          combo: this.combo,
+          timeRemaining: this.timeRemaining,
+          currentLevel: this.currentLevel,
+        };
+
+        // Step 3: accumulate additive multiplier bonuses from active Vexes
+        let colorMultBonus = 0;  // scales colour-cluster points
+        let lineMultBonus = 0;  // scales line-count multiplier
+        for (const vex of this.activeVexes) {
+          const m = vex.getMultiplier(ctx, vex.rank);
+          if (vex.kind === 'color') colorMultBonus += m;
+          else if (vex.kind === 'line') lineMultBonus += m;
+        }
+
+        // Step 4: apply multipliers
+        // colorMult scales how much colour clusters are worth.
+        // lineMult scales how much clearing more lines is worth.
+        // With no Vexes: colorMult=1, lineMult=1 → identical to old formula.
+        const colorMult = 1 + colorMultBonus;
+        const lineMult = 1 + lineMultBonus;
+        const modifiedClusterPoints = totalClusterPoints * colorMult;
+        const moveScore = Math.round(modifiedClusterPoints * (linesCleared * lineMult));
+
         this.score += moveScore;
-        
+        this.currentLevelScore += moveScore;
+        this.moveIndex += 1;
+
         // Clean, Minimalist Feedback
         if (moveScore > 0) {
           const midY = (this.clearingLines[0] + this.clearingLines[this.clearingLines.length - 1]) / 2;
           const py = 112 + midY * BLOCK_SIZE;
           const px = 48 + (BOARD_WIDTH * BLOCK_SIZE) / 2;
-          
+
           let color = '#FFFFFF';
           let scale = 1.0;
           let shakeMag = 0;
-          
+
           if (moveScore >= 1000) {
             color = '#FFD700';
             scale = 1.4;
@@ -603,15 +676,15 @@ export class GameScene extends Phaser.Scene {
             scale = 1.1;
             shakeMag = 0.001;
           }
-          
+
           let displayText = `+${moveScore}`;
           if (linesCleared > 1) {
             // Show the base points and the multiplier if multiple lines were cleared
             displayText = `+${totalClusterPoints} x ${linesCleared}`;
           }
-          
+
           this.showFloatingText(px, py, displayText, color, scale);
-          
+
           if (shakeMag > 0) {
             this.cameras.main.shake(150, shakeMag);
           }
@@ -619,17 +692,17 @@ export class GameScene extends Phaser.Scene {
 
         // --- Board Update: Clear the lines ---
         this.clearingLines.sort((a, b) => b - a);
-        
+
         // Fix: Do all splices first from bottom to top so indices don't shift dynamically relative to the remaining clearingLines
         for (const y of this.clearingLines) {
           this.board.splice(y, 1);
         }
-        
+
         // Then add the new empty rows to the top
         for (let i = 0; i < this.clearingLines.length; i++) {
           this.board.unshift(Array.from({ length: BOARD_WIDTH }, () => ({ filled: false, color: COLORS.empty })));
         }
-        
+
         this.level = Math.floor(this.lines / LINES_PER_LEVEL);
         this.gravityDelay = GRAVITY_TABLE[this.level] || GRAVITY_TABLE[GRAVITY_TABLE.length - 1];
         this.clearingLines = [];
@@ -641,56 +714,55 @@ export class GameScene extends Phaser.Scene {
     // Input handling
     this.handleInput(delta, time);
 
+    // --- Level Progression: time countdown ---
+    // delta is in ms; convert to seconds
+    this.timeRemaining = Math.max(0, this.timeRemaining - delta / 1000);
+
+    // Win condition: reached target score before time ran out
+    if (this.currentLevelScore >= this.currentLevelParams.targetScore) {
+      this.onLevelComplete();
+      return;
+    }
+
+    // Fail condition: time expired and target not met
+    if (this.timeRemaining <= 0) {
+      this.onLevelFailed();
+      return;
+    }
+
     // Gravity
     const isSoftDrop = this.downKey.isDown;
     const currentDelay = isSoftDrop ? 1 : this.gravityDelay;
     this.gravityTimer += delta;
-    
+
     if (this.gravityTimer >= currentDelay * 16.67) {
       const moved = this.movePiece(0, 1);
       if (!moved) {
-        if (!this.lockDelayActive) {
-          this.lockDelayActive = true;
-          this.lockDelayTimer = 0;
+        // GB Lock: piece locks immediately if it cannot move down when gravity hits
+        this.lockPiece();
+        this.clearLines();
+        this.currentPiece = null;
+
+        if (this.clearingLines.length > 0) {
+          // True-color particle burst
+          this.clearingLines.forEach(y => {
+            for (let x = 0; x < BOARD_WIDTH; x++) {
+              const cell = this.board[y][x];
+              if (cell && cell.filled) {
+                const cluster = this.scoringClusters.find(c => c.blocks.some(b => b.x === x && b.y === y));
+                if (cluster && cluster.blocks.length > 1) {
+                  // Larger burst for matching clusters
+                  this.createParticles(48 + x * BLOCK_SIZE + 16, 112 + y * BLOCK_SIZE + 16, 3, cell.color);
+                } else {
+                  // Very subtle burst for isolated blocks
+                  this.createParticles(48 + x * BLOCK_SIZE + 16, 112 + y * BLOCK_SIZE + 16, 1, cell.color);
+                }
+              }
+            }
+          });
         }
       }
       this.gravityTimer = 0;
-    }
-
-    // Lock delay logic
-    if (this.lockDelayActive && this.currentPiece) {
-      if (!this.isOnGround(this.currentPiece)) {
-        this.lockDelayActive = false;
-        this.lockDelayTimer = 0;
-      } else {
-        this.lockDelayTimer++;
-        if (this.lockDelayTimer >= this.LOCK_DELAY) {
-          this.lockPiece();
-          this.clearLines();
-          this.currentPiece = null;
-          this.lockDelayActive = false;
-          this.lockDelayTimer = 0;
-          
-          if (this.clearingLines.length > 0) {
-            // True-color particle burst
-            this.clearingLines.forEach(y => {
-              for (let x = 0; x < BOARD_WIDTH; x++) {
-                const cell = this.board[y][x];
-                if (cell && cell.filled) {
-                  const cluster = this.scoringClusters.find(c => c.blocks.some(b => b.x === x && b.y === y));
-                  if (cluster && cluster.blocks.length > 1) {
-                    // Larger burst for matching clusters
-                    this.createParticles(48 + x * BLOCK_SIZE + 16, 112 + y * BLOCK_SIZE + 16, 3, cell.color);
-                  } else {
-                    // Very subtle burst for isolated blocks
-                    this.createParticles(48 + x * BLOCK_SIZE + 16, 112 + y * BLOCK_SIZE + 16, 1, cell.color);
-                  }
-                }
-              }
-            });
-          }
-        }
-      }
     }
 
     // Spawn new piece
@@ -722,13 +794,78 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Update HUD
-    this.scoreValueText.setText(this.score.toString());
-    this.levelValueText.setText(this.level.toString());
-    this.linesValueText.setText(this.lines.toString());
+    this.hudLevelText.setText(`${this.currentLevel}`)
+    this.hudScoreText.setText(`${this.currentLevelScore}/${this.currentLevelParams.targetScore}`)
+    this.hudTimeText.setText(`${Math.ceil(this.timeRemaining)}s`)
+    this.hudSpeedText.setText(`${this.level}`)
+
+    // Update Balatro-style Vex bar across the top
+    updateVexBar(this.activeVexes)
+
+    // If Fog Vex is active, drive the canvas height from board state
+    if (this.activeVexes.some(v => v.id === 'fog')) {
+      setFogHeight(this.computeFogHeight())
+    }
 
     // Render
     this.render();
     this.renderParticles();
+  }
+
+  /**
+   * Called when the player reaches the target score before time runs out.
+   * Pauses the game and opens the Vex shop. On card pick, advances the level.
+   */
+  private onLevelComplete(): void {
+    this.shopping = true
+
+    // Visual flash before the overlay
+    const boardCenterX = 48 + (BOARD_WIDTH * BLOCK_SIZE) / 2
+    const boardCenterY = 112 + (BOARD_HEIGHT * BLOCK_SIZE) / 2
+    this.showFloatingText(boardCenterX, boardCenterY, `LEVEL ${this.currentLevel} CLEAR!`, '#32CD32', 1.2)
+    this.cameras.main.flash(300, 50, 255, 50, false)
+
+    // Small delay so the flash is visible before overlay appears
+    this.time.delayedCall(400, () => {
+      showVexShop(this.activeVexes, this.currentLevel, () => {
+        this.startNextLevel()
+      })
+    })
+  }
+
+  /**
+   * Resets per-level state and starts the next level.
+   * Called by the shop's onPick callback.
+   */
+  private startNextLevel(): void {
+    this.shopping = false
+    this.currentLevel++
+    this.currentLevelParams = getLevelParams(this.currentLevel)
+    this.currentLevelScore = 0
+    this.timeRemaining = this.currentLevelParams.timeLimitSeconds
+
+    // Reset board for a fresh level
+    this.initializeBoard()
+    this.currentPiece = null
+    this.heldPiece = null
+    this.canHold = true
+    this.clearingLines = []
+    this.clearTimer = 0
+    this.gravityTimer = 0
+    this.generateNextPiece()
+    this.spawnPiece()
+  }
+
+  /**
+   * Called when the timer hits zero without reaching the target score.
+   * Currently triggers game over; can later be wired to a retry flow.
+   */
+  private onLevelFailed(): void {
+    this.gameOver = true
+    this.gameOverBg.setVisible(true)
+    this.gameOverText.setText('TIME UP!')
+    this.gameOverText.setStyle({ color: '#FF6347' })
+    this.gameOverText.setVisible(true)
   }
 
   private createParticles(x: number, y: number, count: number, color: number) {
@@ -766,11 +903,67 @@ export class GameScene extends Phaser.Scene {
         align: 'center',
         resolution: 3,
       }).setOrigin(0.5).setAlpha(alpha).setScale(ft.scale).setDepth(20);
-      
+
       // Force immediate render then destroy
       // This is a bit of a hack for the manual render loop but works for few objects
       this.children.bringToTop(t);
       this.time.delayedCall(0, () => t.destroy());
     });
+  }
+
+  /**
+   * Resets all per-run state and seeds active Vexes.
+   *
+   * Called from create() for a fresh game, and can be called again to restart.
+   * Once a shop UI exists, Vexes will be populated from the player's choices
+   * rather than being hard-coded here.
+   */
+  private initRun(): void {
+    // Level progression
+    this.currentLevel = 1
+    this.currentLevelParams = getLevelParams(1)
+    this.currentLevelScore = 0
+    this.timeRemaining = this.currentLevelParams.timeLimitSeconds
+
+    // Scoring bookkeeping
+    this.score = 0
+    this.moveIndex = 0
+    this.combo = 0
+
+    // Vexes are chosen via the shop between levels.
+    // Start with an empty array — no effects until the player picks one.
+    this.activeVexes = []
+  }
+  /**
+   * Compute the target fog height in pixels.
+   * For each column that has any blocks, finds the topmost filled row and
+   * takes the average across all filled columns. This tracks the game surface
+   * level — where active stacking is happening — rather than the bulk average
+   * (which always lags well below the block tops).
+   *
+   * Empty columns are ignored so a single tiny stack doesn't pull the average
+   * all the way across an otherwise open board.
+   */
+  private computeFogHeight(): number {
+    let totalTopRowFromBottom = 0
+    let filledCols = 0
+
+    for (let col = 0; col < BOARD_WIDTH; col++) {
+      for (let row = 0; row < BOARD_HEIGHT; row++) {
+        if (this.board[row][col].filled) {
+          // row 17 (bottom row) = 1 from bottom; row 0 (top) = 18 from bottom
+          totalTopRowFromBottom += (BOARD_HEIGHT - row)
+          filledCols++
+          break   // only need the topmost block in each column
+        }
+      }
+      // empty column contributes nothing
+    }
+
+    if (filledCols === 0) return 0
+
+    const avgTopFromBottom = totalTopRowFromBottom / filledCols
+    // +1 row padding so the fog clearly wraps around the block tops
+    return (avgTopFromBottom + 1) * BLOCK_SIZE
   }
 }

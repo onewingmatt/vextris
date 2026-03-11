@@ -111,3 +111,34 @@ export interface BoardState {
   level: number
   lines: number
 }
+
+// --- Level Progression ---
+
+export interface LevelParams {
+  level: number
+  targetScore: number       // Score needed for this level (currentLevelScore)
+  timeLimitSeconds: number  // Seconds allowed to reach the targetScore
+}
+
+/** Level data for levels 1–10, clamped above 10. */
+const LEVEL_TABLE: LevelParams[] = [
+  { level: 1, targetScore: 800, timeLimitSeconds: 180 },
+  { level: 2, targetScore: 1400, timeLimitSeconds: 200 },
+  { level: 3, targetScore: 2000, timeLimitSeconds: 220 },
+  { level: 4, targetScore: 2600, timeLimitSeconds: 240 },
+  { level: 5, targetScore: 3200, timeLimitSeconds: 260 },
+  { level: 6, targetScore: 3800, timeLimitSeconds: 280 },
+  { level: 7, targetScore: 4400, timeLimitSeconds: 300 },
+  { level: 8, targetScore: 5000, timeLimitSeconds: 320 },
+  { level: 9, targetScore: 5600, timeLimitSeconds: 340 },
+  { level: 10, targetScore: 6200, timeLimitSeconds: 360 },
+]
+
+/**
+ * Returns the LevelParams for a given level number.
+ * Levels above 10 are clamped to level-10 params.
+ */
+export function getLevelParams(level: number): LevelParams {
+  const clamped = Math.max(1, Math.min(level, LEVEL_TABLE.length))
+  return LEVEL_TABLE[clamped - 1]
+}
