@@ -1,0 +1,497 @@
+{
+  "timestamp": "2026-03-12T18:10:50.899Z",
+  "totalDuration": 1,
+  "effects": [
+    {
+      "effectName": "fog",
+      "enabled": true,
+      "results": [
+        {
+          "rank": 1,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.5,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.86,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 2,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 46,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.87,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 3,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 46.5,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.88,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 4,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 47,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.89,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 5,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 47.5,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.9,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 6,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 48,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.91,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 7,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 48.5,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.92,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 8,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 49,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.93,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 9,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 49.5,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.94,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 10,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 50,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.95,
+          "colorCacheHitRate": 0.9
+        }
+      ],
+      "totalTime": 1
+    },
+    {
+      "effectName": "blackout",
+      "enabled": true,
+      "results": [
+        {
+          "rank": 1,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.86,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 2,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.87,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 3,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.88,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 4,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.89,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 5,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.9,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 6,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.91,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 7,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.92,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 8,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.93,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 9,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.94,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 10,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.95,
+          "colorCacheHitRate": 0.9
+        }
+      ],
+      "totalTime": 0
+    },
+    {
+      "effectName": "color_desaturation",
+      "enabled": true,
+      "results": [
+        {
+          "rank": 1,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.86,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 2,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.87,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 3,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.88,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 4,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.89,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 5,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.9,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 6,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.91,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 7,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.92,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 8,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.93,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 9,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.94,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 10,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45,
+          "particleCount": 0,
+          "ghostCacheHitRate": 0.95,
+          "colorCacheHitRate": 0.9
+        }
+      ],
+      "totalTime": 0
+    },
+    {
+      "effectName": "particles",
+      "enabled": true,
+      "results": [
+        {
+          "rank": 1,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.01,
+          "particleCount": 10,
+          "ghostCacheHitRate": 0.86,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 2,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.02,
+          "particleCount": 15,
+          "ghostCacheHitRate": 0.87,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 3,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.02,
+          "particleCount": 20,
+          "ghostCacheHitRate": 0.88,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 4,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.03,
+          "particleCount": 25,
+          "ghostCacheHitRate": 0.89,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 5,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.03,
+          "particleCount": 30,
+          "ghostCacheHitRate": 0.9,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 6,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.04,
+          "particleCount": 35,
+          "ghostCacheHitRate": 0.91,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 7,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.04,
+          "particleCount": 40,
+          "ghostCacheHitRate": 0.92,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 8,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.05,
+          "particleCount": 45,
+          "ghostCacheHitRate": 0.93,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 9,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.05,
+          "particleCount": 50,
+          "ghostCacheHitRate": 0.94,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 10,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.06,
+          "particleCount": 55,
+          "ghostCacheHitRate": 0.95,
+          "colorCacheHitRate": 0.9
+        }
+      ],
+      "totalTime": 0
+    },
+    {
+      "effectName": "all_effects",
+      "enabled": true,
+      "results": [
+        {
+          "rank": 1,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.01,
+          "particleCount": 10,
+          "ghostCacheHitRate": 0.86,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 2,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.02,
+          "particleCount": 15,
+          "ghostCacheHitRate": 0.87,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 3,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.02,
+          "particleCount": 20,
+          "ghostCacheHitRate": 0.88,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 4,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.03,
+          "particleCount": 25,
+          "ghostCacheHitRate": 0.89,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 5,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.03,
+          "particleCount": 30,
+          "ghostCacheHitRate": 0.9,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 6,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.04,
+          "particleCount": 35,
+          "ghostCacheHitRate": 0.91,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 7,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.04,
+          "particleCount": 40,
+          "ghostCacheHitRate": 0.92,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 8,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.05,
+          "particleCount": 45,
+          "ghostCacheHitRate": 0.93,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 9,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.05,
+          "particleCount": 50,
+          "ghostCacheHitRate": 0.94,
+          "colorCacheHitRate": 0.9
+        },
+        {
+          "rank": 10,
+          "avgFrameTime": 16.67,
+          "fps": 59.99,
+          "memoryUsed": 45.06,
+          "particleCount": 55,
+          "ghostCacheHitRate": 0.95,
+          "colorCacheHitRate": 0.9
+        }
+      ],
+      "totalTime": 0
+    }
+  ],
+  "summary": {
+    "avgFpsAllRanks": 59.99,
+    "peakMemory": 50,
+    "slowestFrame": 16.67,
+    "fastestFrame": 16.67
+  }
+}

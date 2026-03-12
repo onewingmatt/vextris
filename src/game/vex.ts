@@ -55,7 +55,7 @@ export type Vex = {
     id: string
     name: string
     kind: VexKind
-    rank: 1 | 2 | 3
+    rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
     description: string
     downsideDescription: string
 
@@ -64,26 +64,40 @@ export type Vex = {
      * given the current scoring context and rank.
      * Return 0 if the context doesn't qualify (e.g. no lines cleared).
      */
-    getMultiplier: (ctx: ScoringContext, rank: 1 | 2 | 3) => number
+    getMultiplier: (ctx: ScoringContext, rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10) => number
 
     /**
      * Called once when this Vex first becomes active (or when it is loaded).
      * Should start any repeating timers or visual effects.
      * @stub — implement the body in GameScene after calling onApply?.()
      */
-    onApply?: (rank: 1 | 2 | 3) => void
+    onApply?: (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10) => void
 
     /**
      * Called when the Vex's rank is upgraded.
      * Should adjust existing timers/effects to match the new rank.
      * @stub — implement the body in GameScene after calling onRankChange?.()
      */
-    onRankChange?: (oldRank: 1 | 2 | 3, newRank: 1 | 2 | 3) => void
+    onRankChange?: (oldRank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, newRank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10) => void
 }
 
 // ---------------------------------------------------------------------------
 // Rank helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Rising Dread garbage row parameters based on Vex rank.
+ * Higher rank = faster interval, fewer gaps.
+ */
+export type VexRank = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+export function getRisingDreadParams(rank: VexRank) {
+    // Interval scales from 30s (rank 1) down to 10s (rank 10)
+    const intervalSeconds = Math.max(30 - 2 * (rank - 1), 10);
+    // Gaps scale from 3 (rank 1-3) down to 1 (rank 7-10)
+    const gapsPerRow = Math.max(3 - Math.floor((rank - 1) / 3), 1);
+    return { intervalSeconds, gapsPerRow };
+}
 
 // (rankStep is available for future getMultiplier implementations that need
 // interpolated values rather than lookup tables.)
@@ -99,7 +113,7 @@ export type Vex = {
  * Downside: screen periodically darkens, obscuring the board.
  * Reward:   colour clusters score more.
  */
-export const createVexBlackout = (rank: 1 | 2 | 3): Vex => ({
+export const createVexBlackout = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex => ({
     id: 'blackout',
     name: 'Vex of Blackout',
     kind: 'color',
@@ -109,8 +123,9 @@ export const createVexBlackout = (rank: 1 | 2 | 3): Vex => ({
 
     getMultiplier(ctx, r) {
         if (ctx.totalClusterPoints === 0) return 0
-        // Rank 1: +0.20, Rank 2: +0.50, Rank 3: +1.00
-        const values: Record<1 | 2 | 3, number> = { 1: 0.2, 2: 0.5, 3: 1.0 }
+        const values: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, number> = {
+            1: 0.2, 2: 0.5, 3: 1.0, 4: 1.5, 5: 2.0, 6: 2.5, 7: 3.0, 8: 3.5, 9: 4.0, 10: 4.5
+        }
         return values[r]
     },
 
@@ -134,7 +149,7 @@ export const createVexBlackout = (rank: 1 | 2 | 3): Vex => ({
  * Downside: bottom rows are covered by fog (hidden from the player).
  * Reward:   colour clusters score more.
  */
-export const createVexFog = (rank: 1 | 2 | 3): Vex => ({
+export const createVexFog = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex => ({
     id: 'fog',
     name: 'Vex of Fog',
     kind: 'color',
@@ -144,8 +159,9 @@ export const createVexFog = (rank: 1 | 2 | 3): Vex => ({
 
     getMultiplier(ctx, r) {
         if (ctx.totalClusterPoints === 0) return 0
-        // Rank 1: +0.30, Rank 2: +0.60, Rank 3: +1.20
-        const values: Record<1 | 2 | 3, number> = { 1: 0.3, 2: 0.6, 3: 1.2 }
+        const values: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, number> = {
+            1: 0.3, 2: 0.6, 3: 1.2, 4: 1.8, 5: 2.4, 6: 3.0, 7: 3.6, 8: 4.2, 9: 4.8, 10: 5.4
+        }
         return values[r]
     },
 
@@ -170,7 +186,7 @@ export const createVexFog = (rank: 1 | 2 | 3): Vex => ({
  *           disrupting cluster formation.
  * Reward:   colour clusters score more.
  */
-export const createVexCorruption = (rank: 1 | 2 | 3): Vex => ({
+export const createVexCorruption = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex => ({
     id: 'corruption',
     name: 'Vex of Corruption',
     kind: 'color',
@@ -180,8 +196,9 @@ export const createVexCorruption = (rank: 1 | 2 | 3): Vex => ({
 
     getMultiplier(ctx, r) {
         if (ctx.totalClusterPoints === 0) return 0
-        // Rank 1: +0.30, Rank 2: +0.70, Rank 3: +1.30
-        const values: Record<1 | 2 | 3, number> = { 1: 0.3, 2: 0.7, 3: 1.3 }
+        const values: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, number> = {
+            1: 0.3, 2: 0.7, 3: 1.3, 4: 1.95, 5: 2.6, 6: 3.25, 7: 3.9, 8: 4.55, 9: 5.2, 10: 5.85
+        }
         return values[r]
     },
 
@@ -207,7 +224,7 @@ export const createVexCorruption = (rank: 1 | 2 | 3): Vex => ({
  * Downside: base drop speed (gravity) increases significantly.
  * Reward:   line clears score more.
  */
-export const createVexQuicksand = (rank: 1 | 2 | 3): Vex => ({
+export const createVexQuicksand = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex => ({
     id: 'quicksand',
     name: 'Vex of Quicksand',
     kind: 'line',
@@ -217,8 +234,9 @@ export const createVexQuicksand = (rank: 1 | 2 | 3): Vex => ({
 
     getMultiplier(ctx, r) {
         if (ctx.linesCleared === 0) return 0
-        // Rank 1: +0.20, Rank 2: +0.60, Rank 3: +1.20
-        const values: Record<1 | 2 | 3, number> = { 1: 0.2, 2: 0.6, 3: 1.2 }
+        const values: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, number> = {
+            1: 0.2, 2: 0.6, 3: 1.2, 4: 1.8, 5: 2.4, 6: 3.0, 7: 3.6, 8: 4.2, 9: 4.8, 10: 5.4
+        }
         return values[r]
     },
 
@@ -240,7 +258,7 @@ export const createVexQuicksand = (rank: 1 | 2 | 3): Vex => ({
  * Downside: next-piece preview is hidden; at higher ranks hold and colours too.
  * Reward:   line clears score more.
  */
-export const createVexAmnesia = (rank: 1 | 2 | 3): Vex => ({
+export const createVexAmnesia = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex => ({
     id: 'amnesia',
     name: 'Vex of Amnesia',
     kind: 'line',
@@ -250,8 +268,9 @@ export const createVexAmnesia = (rank: 1 | 2 | 3): Vex => ({
 
     getMultiplier(ctx, r) {
         if (ctx.linesCleared === 0) return 0
-        // Rank 1: +0.30, Rank 2: +0.70, Rank 3: +1.30
-        const values: Record<1 | 2 | 3, number> = { 1: 0.3, 2: 0.7, 3: 1.3 }
+        const values: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, number> = {
+            1: 0.3, 2: 0.7, 3: 1.3, 4: 1.95, 5: 2.6, 6: 3.25, 7: 3.9, 8: 4.55, 9: 5.2, 10: 5.85
+        }
         return values[r]
     },
 
@@ -271,7 +290,7 @@ export const createVexAmnesia = (rank: 1 | 2 | 3): Vex => ({
  * Downside: garbage rows periodically rise from the bottom.
  * Reward:   line clears score more.
  */
-export const createVexRisingDread = (rank: 1 | 2 | 3): Vex => ({
+export const createVexRisingDread = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex => ({
     id: 'rising_dread',
     name: 'Vex of Rising Dread',
     kind: 'line',
@@ -281,21 +300,25 @@ export const createVexRisingDread = (rank: 1 | 2 | 3): Vex => ({
 
     getMultiplier(ctx, r) {
         if (ctx.linesCleared === 0) return 0
-        // Rank 1: +0.20, Rank 2: +0.60, Rank 3: +1.20
-        const values: Record<1 | 2 | 3, number> = { 1: 0.2, 2: 0.6, 3: 1.2 }
+        const values: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, number> = {
+            1: 0.2, 2: 0.6, 3: 1.2, 4: 1.8, 5: 2.4, 6: 3.0, 7: 3.6, 8: 4.2, 9: 4.8, 10: 5.4
+        }
         return values[r]
     },
 
     onApply(_r) {
-        // TODO (GameScene): create a repeating timer that shifts the board up by 1
-        // and inserts a random garbage row at the bottom with 1 hole.
-        //   rank 1 → every 20s
-        //   rank 2 → every 12s
-        //   rank 3 → every 7s
+        // GameScene wires this up:
+        // 1. Compute params via getRisingDreadParams(_r)
+        // 2. Schedule repeating timer:
+        //    - Show warning flash for ~200ms
+        //    - After 1s, call pushGarbageRow(gapsPerRow)
+        // 3. Store timer ID in GameScene's vexIntervals map keyed by 'rising_dread'
     },
 
     onRankChange(_oldRank, _newRank) {
-        // TODO (GameScene): adjust the timer interval to match newRank.
+        // GameScene wires this up:
+        // 1. Clear old interval via vexIntervals.get('rising_dread')
+        // 2. Call onApply(_newRank) to restart with new params
     },
 })
 
@@ -323,7 +346,7 @@ export type VexId = keyof typeof STARTER_VEX_FACTORIES
  * Upgrades a Vex to a new rank in-place and fires onRankChange.
  * Safe to call even if old rank === new rank.
  */
-export function upgradeVex(vex: Vex, newRank: 1 | 2 | 3): void {
+export function upgradeVex(vex: Vex, newRank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
     if (vex.rank === newRank) return
     const oldRank = vex.rank
     vex.rank = newRank

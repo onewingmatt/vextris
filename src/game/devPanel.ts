@@ -24,7 +24,8 @@ const PANEL_CSS = `
   position: fixed;
   top: 12px;
   right: 12px;
-  width: 280px;
+  width: min(360px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
   background: rgba(8, 12, 20, 0.96);
   border: 2px solid #444;
   border-radius: 8px;
@@ -35,6 +36,7 @@ const PANEL_CSS = `
   gap: 0;
   box-shadow: 0 0 30px rgba(0,0,0,0.7);
   touch-action: none;
+  overflow-y: auto;
 }
 #${PANEL_ID}.open { display: block; }
 
@@ -72,20 +74,23 @@ const PANEL_CSS = `
 
 #${PANEL_ID} .rank-btns {
   display: flex;
-  gap: 3px;
+  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex: 0 0 auto;
 }
 #${PANEL_ID} .rank-btn {
   font-family: "Press Start 2P", monospace;
-  font-size: 7px;
-  width: 22px;
-  height: 22px;
+  font-size: 6px;
+  width: 18px;
+  height: 18px;
   border: 1px solid #444;
   background: #111;
   color: #666;
   cursor: pointer;
   border-radius: 3px;
   padding: 0;
-  line-height: 22px;
+  line-height: 18px;
   text-align: center;
 }
 #${PANEL_ID} .rank-btn.active {
@@ -113,6 +118,17 @@ const PANEL_CSS = `
   letter-spacing: 1px;
 }
 #${PANEL_ID} .clear-btn:hover { background: #3a1010; }
+
+@media (max-width: 700px) {
+  #${PANEL_ID} {
+    top: 8px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-height: calc(100vh - 16px);
+    padding: 12px;
+  }
+}
 `
 
 /** Short display names for each Vex */
@@ -130,7 +146,7 @@ export class DevPanel {
   private activeVexes: Vex[]
   private onChange: DevChangeCallback
   /** Tracks current rank selection per ID (0 = off) */
-  private state: Map<VexId, 0 | 1 | 2 | 3> = new Map()
+  private state: Map<VexId, 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10> = new Map()
 
   constructor(activeVexes: Vex[], onChange: DevChangeCallback) {
     this.activeVexes = activeVexes
@@ -140,7 +156,7 @@ export class DevPanel {
     const allIds = Object.keys(STARTER_VEX_FACTORIES) as VexId[]
     for (const id of allIds) {
       const existing = activeVexes.find(v => v.id === id)
-      this.state.set(id, existing ? existing.rank as 1 | 2 | 3 : 0)
+      this.state.set(id, existing ? existing.rank as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 : 0)
     }
 
     this.el = this.build()
@@ -168,7 +184,7 @@ export class DevPanel {
     const allIds = Object.keys(STARTER_VEX_FACTORIES) as VexId[]
     for (const id of allIds) {
       const existing = activeVexes.find(v => v.id === id)
-      this.state.set(id, existing ? existing.rank as 1 | 2 | 3 : 0)
+      this.state.set(id, existing ? existing.rank as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 : 0)
     }
     this.refreshUI()
   }
@@ -198,7 +214,7 @@ export class DevPanel {
 
     // Attach rank button handlers
     for (const id of allIds) {
-      for (const rank of [1, 2, 3] as const) {
+      for (const rank of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const) {
         const btn = panel.querySelector<HTMLButtonElement>(`[data-vex="${id}"][data-rank="${rank}"]`)
         btn?.addEventListener('click', () => this.handleRankClick(id, rank))
       }
@@ -213,22 +229,23 @@ export class DevPanel {
     const meta = VEX_META[id]
     const cur = this.state.get(id) ?? 0
 
-    const rankBtn = (r: 1 | 2 | 3) => {
+    const rankBtn = (r: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10) => {
       const cls = cur === r ? 'rank-btn active' : cur === 0 ? 'rank-btn off' : 'rank-btn'
-      return `<button class="${cls}" data-vex="${id}" data-rank="${r}">${['I', 'II', 'III'][r - 1]}</button>`
+      const labels = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
+      return `<button class="${cls}" data-vex="${id}" data-rank="${r}">${labels[r - 1]}</button>`
     }
 
     return `
       <div class="vex-row" id="dev-row-${id}">
         <span class="vex-name ${meta.kind}-kind">${meta.label}</span>
         <div class="rank-btns">
-          ${rankBtn(1)}${rankBtn(2)}${rankBtn(3)}
+          ${rankBtn(1)}${rankBtn(2)}${rankBtn(3)}${rankBtn(4)}${rankBtn(5)}${rankBtn(6)}${rankBtn(7)}${rankBtn(8)}${rankBtn(9)}${rankBtn(10)}
         </div>
       </div>
     `
   }
 
-  private handleRankClick(id: VexId, rank: 1 | 2 | 3): void {
+  private handleRankClick(id: VexId, rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
     const cur = this.state.get(id) ?? 0
 
     if (cur === rank) {
@@ -243,7 +260,7 @@ export class DevPanel {
       // Change rank
       const vex = this.activeVexes.find(v => v.id === id)
       if (vex) {
-        const oldRank = vex.rank as 1 | 2 | 3
+        const oldRank = vex.rank
         upgradeVex(vex, rank)
         vex.onRankChange?.(oldRank, rank)
       }
@@ -254,7 +271,7 @@ export class DevPanel {
     this.onChange(this.activeVexes)
   }
 
-  private addVex(id: VexId, rank: 1 | 2 | 3): void {
+  private addVex(id: VexId, rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
     const vex = STARTER_VEX_FACTORIES[id](rank)
     this.activeVexes.push(vex)
     vex.onApply?.(rank)
@@ -280,7 +297,7 @@ export class DevPanel {
     const allIds = Object.keys(STARTER_VEX_FACTORIES) as VexId[]
     for (const id of allIds) {
       const cur = this.state.get(id) ?? 0
-      for (const rank of [1, 2, 3] as const) {
+      for (const rank of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const) {
         const btn = this.el.querySelector<HTMLButtonElement>(`[data-vex="${id}"][data-rank="${rank}"]`)
         if (!btn) continue
         btn.className = cur === rank ? 'rank-btn active' : cur === 0 ? 'rank-btn off' : 'rank-btn'

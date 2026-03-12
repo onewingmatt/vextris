@@ -62,6 +62,7 @@ const SHOP_CSS = `
   gap: 20px;
   flex-wrap: wrap;
   justify-content: center;
+  width: min(100%, 720px);
 }
 
 #vextris-shop .card {
@@ -77,25 +78,38 @@ const SHOP_CSS = `
   cursor: pointer;
   transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
   box-sizing: border-box;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
-#vextris-shop .card:hover {
+#vextris-shop .card:hover,
+#vextris-shop .card:focus-visible {
   transform: translateY(-6px) scale(1.03);
   border-color: #32CD32;
   box-shadow: 0 0 20px rgba(50, 205, 50, 0.35);
 }
 
+#vextris-shop .card:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 #vextris-shop .card.color-vex {
   border-color: #4a3a00;
 }
-#vextris-shop .card.color-vex:hover {
+#vextris-shop .card.color-vex:hover,
+#vextris-shop .card.color-vex:focus-visible {
   border-color: #FFD700;
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.35);
 }
 #vextris-shop .card.line-vex {
   border-color: #00274a;
 }
-#vextris-shop .card.line-vex:hover {
+#vextris-shop .card.line-vex:hover,
+#vextris-shop .card.line-vex:focus-visible {
   border-color: #00BFFF;
   box-shadow: 0 0 20px rgba(0, 191, 255, 0.35);
 }
@@ -112,6 +126,7 @@ const SHOP_CSS = `
 .color-vex .card-label { background: #2a1f00; color: #FFD700; }
 .line-vex  .card-label { background: #001a2e; color: #00BFFF; }
 .rankup-badge { background: #1a003a; color: #bf8fff; }
+.card-label-secondary { margin-top: 2px; }
 
 #vextris-shop .card-name {
   font-size: 11px;
@@ -148,6 +163,34 @@ const SHOP_CSS = `
   color: #32CD32;
   align-self: flex-end;
 }
+
+@media (max-width: 700px) {
+  #vextris-shop {
+    justify-content: flex-start;
+    gap: 16px;
+    padding: 14px 10px 18px;
+    overflow-y: auto;
+  }
+
+  #vextris-shop h2 {
+    font-size: 16px;
+  }
+
+  #vextris-shop .shop-subtitle {
+    margin-top: -10px;
+  }
+
+  #vextris-shop .cards {
+    width: 100%;
+    gap: 12px;
+  }
+
+  #vextris-shop .card {
+    width: min(100%, 360px);
+    min-height: 0;
+    padding: 14px 12px;
+  }
+}
 `
 
 // ---------------------------------------------------------------------------
@@ -183,10 +226,11 @@ export function showVexShop(
     document.body.appendChild(overlay)
 
     // Attach click handlers to cards
-    overlay.querySelectorAll<HTMLElement>('.card').forEach((el) => {
+    overlay.querySelectorAll<HTMLButtonElement>('button.card').forEach((el) => {
         const idx = Number(el.dataset.offerIdx)
         el.addEventListener('click', () => {
             const offer = offers[idx]
+        if (!offer) return
             applyOffer(offer, activeVexes)
             overlay.remove()
             onPick(activeVexes)
@@ -257,14 +301,14 @@ function renderCard(offer: ShopOffer, idx: number): string {
         const mult = proto.getMultiplier({ linesCleared: 1, clusters: [], totalClusterPoints: 1, maxClusterSize: 0, colorsInMove: new Set(), moveIndex: 0, combo: 0, timeRemaining: 999, currentLevel: 1 }, 1)
 
         return `
-      <div class="card ${kindClass}" data-offer-idx="${idx}">
+      <button type="button" class="card ${kindClass}" data-offer-idx="${idx}">
         <span class="card-label">${kindLabel}</span>
         <div class="card-name">${proto.name}</div>
         <div class="card-rank"><span class="new-rank">NEW — RANK I</span></div>
         <div class="card-desc">${proto.description}</div>
         <div class="card-downside">⚠ ${proto.downsideDescription}</div>
         <div class="card-mult">+${(mult * 100).toFixed(0)}% mult</div>
-      </div>
+      </button>
     `
     } else {
         // rank-up
@@ -280,9 +324,9 @@ function renderCard(offer: ShopOffer, idx: number): string {
         const multDelta = multAfter - multBefore
 
         return `
-      <div class="card ${kindClass}" data-offer-idx="${idx}">
+      <button type="button" class="card ${kindClass}" data-offer-idx="${idx}">
         <span class="card-label rankup-badge">⬆ RANK UP</span>
-        <span class="card-label ${kindClass === 'color-vex' ? '' : ''}" style="margin-top:2px">${kindLabel}</span>
+        <span class="card-label card-label-secondary">${kindLabel}</span>
         <div class="card-name">${vex.name}</div>
         <div class="card-rank">
           <span style="color:#888">${rankNumeral(fromRank)}</span>
@@ -292,7 +336,7 @@ function renderCard(offer: ShopOffer, idx: number): string {
         <div class="card-desc">${vex.description}</div>
         <div class="card-downside">⚠ ${vex.downsideDescription}</div>
         <div class="card-mult">+${(multDelta * 100).toFixed(0)}% more mult</div>
-      </div>
+      </button>
     `
     }
 }
