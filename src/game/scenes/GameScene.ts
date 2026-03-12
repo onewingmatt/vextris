@@ -43,7 +43,11 @@ export class GameScene extends Phaser.Scene {
   private currentLevel = 1
   private currentLevelScore = 0          // score earned this level only
   private currentLevelParams!: LevelParams
-  private timeRemaining = 0              // seconds remaining this level
+  private resolveCurrent = 0             // current Resolve remaining this level
+
+  // Resolve drain tuning (can be tweaked for difficulty)
+  private readonly REALTIME_DRAIN_PER_SECOND = 0.3  // more forgiving real-time drain
+  private readonly PERPIECE_DRAIN = 0.8                // more forgiving drain per piece lock
 
   // --- Vex System ---
   /** Active Vexes for this run; all always-on once taken. */
@@ -66,6 +70,9 @@ export class GameScene extends Phaser.Scene {
   private hudScoreText!: Phaser.GameObjects.Text  // "cur / target"
   private hudTimeText!: Phaser.GameObjects.Text
   private hudSpeedText!: Phaser.GameObjects.Text  // gravity speed level
+  private lastCalcTimestamp = 0
+  private lastCalcBox!: Phaser.GameObjects.Rectangle
+  private lastChips!: { bg: Phaser.GameObjects.Rectangle; text: Phaser.GameObjects.Text }[]
 
   /** Dev panel — backtick to open/close */
   private devPanel!: DevPanel
@@ -109,8 +116,6 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(COLORS.background)
 
     // Board and HUD layout
-    const boardOffsetX = 48;
-    const boardOffsetY = 112;
 
     // Create graphics for rendering
     this.graphics = this.add.graphics();
@@ -139,8 +144,8 @@ export class GameScene extends Phaser.Scene {
     hudY += 60;
 
     // TIME
-    this.add.text(hudX, hudY, 'TIME', hudFont).setOrigin(0, 0);
-    this.hudTimeText = this.add.text(hudX, hudY + 20, '180', { ...hudValueFont, color: '#FFD700' }).setOrigin(0, 0);
+    this.add.text(hudX, hudY, 'RESOLVE', hudFont).setOrigin(0, 0);
+    this.hudTimeText = this.add.text(hudX, hudY + 20, '80/80', { ...hudValueFont, color: '#FFD700' }).setOrigin(0, 0);
     hudY += 60;
 
     // SPEED (gravity level)
@@ -155,15 +160,44 @@ export class GameScene extends Phaser.Scene {
     // HOLD
     this.add.text(hudX, hudY, 'HOLD', hudFont).setOrigin(0, 0);
 
-    // Game Over UI
-    const gameOverX = Math.floor(boardOffsetX + (BOARD_WIDTH * BLOCK_SIZE) / 2);
-    const gameOverY = Math.floor(boardOffsetY + (BOARD_HEIGHT * BLOCK_SIZE) / 2);
+    // Last full-clear calculation — compact chip-style panel aligned with board to avoid HUD overlap
+    const boardBottomY = 112 + BOARD_HEIGHT * BLOCK_SIZE;
+    const boardLeftX = 48;
+    const boardWidthPx = BOARD_WIDTH * BLOCK_SIZE;
+    const boxWidth = boardWidthPx + 16; // small padding
+    const boxHeight = 40;
+    const boxX = boardLeftX + boardWidthPx / 2;
+    const boxY = boardBottomY + 8;
+    this.lastCalcBox = this.add.rectangle(boxX, boxY, boxWidth, boxHeight, 0x000000, 0.6).setOrigin(0.5, 0).setDepth(5).setStrokeStyle(2, 0x222222);
 
-    this.gameOverBg = this.add.rectangle(gameOverX, gameOverY, BOARD_WIDTH * BLOCK_SIZE, 128, 0x000000, 0.8)
-      .setVisible(false).setDepth(9);
+    // Create compact chips (no labels). They auto-align inside the board width so they won't overlap the HUD.
+    const chipCount = 6;
+    const chipPadding = 8;
+    const chipGap = 6;
+    const chipWidth = Math.floor((boxWidth - chipPadding * 2 - chipGap * (chipCount - 1)) / chipCount);
+    let chipX = boxX - boxWidth / 2 + chipPadding;
+    const chipY = boxY + boxHeight / 2;
+
+    const chipColors = [0xFFFFFF, 0xFFFFFF, 0x00BFFF, 0xFFA500, 0xFFD700, 0x7CFC00];
+    this.lastChips = [];
+    for (let i = 0; i < chipCount; i++) {
+      const bg = this.add.rectangle(chipX + chipWidth / 2, chipY, chipWidth, boxHeight - 12, 0x000000, 0).setOrigin(0.5, 0.5).setDepth(6).setStrokeStyle(1, 0x111111);
+      const txt = this.add.text(chipX + 6, chipY - 8, '', { fontSize: '12px', fontFamily: '"Press Start 2P", monospace', color: '#FFFFFF' }).setOrigin(0, 0.5).setDepth(7);
+      // store intended chip color (used when active)
+      (bg as any).chipColor = chipColors[i];
+      this.lastChips.push({ bg, text: txt });
+      chipX += chipWidth + chipGap;
+    }
+
+    // Game Over UI
+    const gameOverX = 320; // Center of the 640px wide game
+    const gameOverY = Math.floor(112 + (BOARD_HEIGHT * BLOCK_SIZE) / 2);
+
+    this.gameOverBg = this.add.rectangle(gameOverX, gameOverY, 600, 160, 0x000000, 0.9)
+      .setVisible(false).setDepth(9).setStrokeStyle(4, 0xFF6347);
 
     this.gameOverText = this.add.text(gameOverX, gameOverY, 'GAME OVER', {
-      fontSize: '32px',
+      fontSize: '24px',
       fontFamily: '"Press Start 2P", monospace',
       color: '#FF6347',
       align: 'center',
@@ -393,6 +427,10 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+
+    // TODO: Vex modifiers can change this per-piece Resolve cost or refund on big clears.
+    this.resolveCurrent -= this.PERPIECE_DRAIN
+    if (this.resolveCurrent < 0) this.resolveCurrent = 0
   }
 
   private clearLines() {
@@ -627,15 +665,20 @@ export class GameScene extends Phaser.Scene {
           colorsInMove: new Set(this.scoringClusters.map(c => c.color)),
           moveIndex: this.moveIndex,
           combo: this.combo,
-          timeRemaining: this.timeRemaining,
+          timeRemaining: this.resolveCurrent,
           currentLevel: this.currentLevel,
         };
 
         // Step 3: accumulate additive multiplier bonuses from active Vexes
         let colorMultBonus = 0;  // scales colour-cluster points
         let lineMultBonus = 0;  // scales line-count multiplier
+        const vexDetails: string[] = [];
         for (const vex of this.activeVexes) {
           const m = vex.getMultiplier(ctx, vex.rank);
+          // Record contribution for the HUD breakdown (skip zero contributions)
+          if (m !== 0) {
+            vexDetails.push(`${vex.name} (r${vex.rank}, ${vex.kind}): ${m >= 0 ? '+' : ''}${m.toFixed(2)}`);
+          }
           if (vex.kind === 'color') colorMultBonus += m;
           else if (vex.kind === 'line') lineMultBonus += m;
         }
@@ -652,6 +695,35 @@ export class GameScene extends Phaser.Scene {
         this.score += moveScore;
         this.currentLevelScore += moveScore;
         this.moveIndex += 1;
+
+        const calcResult = moveScore;
+        if (this.lastCalcBox) {
+          // Compact, label-free display
+          // Clusters: show sizes as "4·2" (dot separator)
+          const clusterSizes = this.scoringClusters.map(c => c.blocks.length).join('·');
+          // Map values to chips: [clusters, lines, colorBonus, lineBonus, multipliers, result]
+          const chipValues = [
+            clusterSizes,
+            `×${linesCleared}`,
+            colorMultBonus !== 0 ? `${colorMultBonus >= 0 ? '+' : ''}${colorMultBonus.toFixed(2)}` : '',
+            lineMultBonus !== 0 ? `${lineMultBonus >= 0 ? '+' : ''}${lineMultBonus.toFixed(2)}` : '',
+            `${colorMult.toFixed(2)}·${lineMult.toFixed(2)}`,
+            `=${calcResult}`,
+          ];
+
+          for (let i = 0; i < this.lastChips.length; i++) {
+            const chip = this.lastChips[i];
+            const val = chipValues[i] || '';
+            chip.text.setText(val);
+            if (val) {
+              (chip.bg as any).setFillStyle((chip.bg as any).chipColor, 0.12);
+            } else {
+              (chip.bg as any).setFillStyle(0x000000, 0);
+            }
+          }
+
+          this.lastCalcTimestamp = Date.now();
+        }
 
         // Clean, Minimalist Feedback
         if (moveScore > 0) {
@@ -714,18 +786,19 @@ export class GameScene extends Phaser.Scene {
     // Input handling
     this.handleInput(delta, time);
 
-    // --- Level Progression: time countdown ---
-    // delta is in ms; convert to seconds
-    this.timeRemaining = Math.max(0, this.timeRemaining - delta / 1000);
+    // --- Resolve Drain: Hybrid system ---
+    // TODO: Vex modifiers can adjust REALTIME_DRAIN_PER_SECOND.
+    this.resolveCurrent -= delta * this.REALTIME_DRAIN_PER_SECOND / 1000;
+    if (this.resolveCurrent < 0) this.resolveCurrent = 0;
 
-    // Win condition: reached target score before time ran out
+    // Win condition: reached target score before Resolve ran out
     if (this.currentLevelScore >= this.currentLevelParams.targetScore) {
       this.onLevelComplete();
       return;
     }
 
-    // Fail condition: time expired and target not met
-    if (this.timeRemaining <= 0) {
+    // Fail condition: Resolve expired and target not met
+    if (this.resolveCurrent <= 0) {
       this.onLevelFailed();
       return;
     }
@@ -796,7 +869,7 @@ export class GameScene extends Phaser.Scene {
     // Update HUD
     this.hudLevelText.setText(`${this.currentLevel}`)
     this.hudScoreText.setText(`${this.currentLevelScore}/${this.currentLevelParams.targetScore}`)
-    this.hudTimeText.setText(`${Math.ceil(this.timeRemaining)}s`)
+    this.hudTimeText.setText(`${Math.ceil(this.resolveCurrent)} / ${this.currentLevelParams.resolveMax}`)
     this.hudSpeedText.setText(`${this.level}`)
 
     // Update Balatro-style Vex bar across the top
@@ -805,6 +878,20 @@ export class GameScene extends Phaser.Scene {
     // If Fog Vex is active, drive the canvas height from board state
     if (this.activeVexes.some(v => v.id === 'fog')) {
       setFogHeight(this.computeFogHeight())
+    }
+
+    // Fade the last calculation display after 7 seconds
+    if (this.lastCalcTimestamp) {
+      const age = Date.now() - this.lastCalcTimestamp;
+      if (age > 7000) {
+        if (this.lastChips) {
+          for (const chip of this.lastChips) {
+            chip.text.setText('');
+            chip.bg.setFillStyle(0x000000, 0);
+          }
+        }
+        this.lastCalcTimestamp = 0;
+      }
     }
 
     // Render
@@ -842,7 +929,7 @@ export class GameScene extends Phaser.Scene {
     this.currentLevel++
     this.currentLevelParams = getLevelParams(this.currentLevel)
     this.currentLevelScore = 0
-    this.timeRemaining = this.currentLevelParams.timeLimitSeconds
+    this.resolveCurrent = this.currentLevelParams.resolveMax
 
     // Reset board for a fresh level
     this.initializeBoard()
@@ -857,13 +944,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Called when the timer hits zero without reaching the target score.
+   * Called when the Resolve hits zero without reaching the target score.
    * Currently triggers game over; can later be wired to a retry flow.
    */
   private onLevelFailed(): void {
     this.gameOver = true
     this.gameOverBg.setVisible(true)
-    this.gameOverText.setText('TIME UP!')
+    this.gameOverText.setText('RESOLVE DEPLETED!')
     this.gameOverText.setStyle({ color: '#FF6347' })
     this.gameOverText.setVisible(true)
   }
@@ -923,7 +1010,7 @@ export class GameScene extends Phaser.Scene {
     this.currentLevel = 1
     this.currentLevelParams = getLevelParams(1)
     this.currentLevelScore = 0
-    this.timeRemaining = this.currentLevelParams.timeLimitSeconds
+    this.resolveCurrent = this.currentLevelParams.resolveMax
 
     // Scoring bookkeeping
     this.score = 0

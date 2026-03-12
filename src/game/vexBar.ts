@@ -40,9 +40,9 @@ const BAR_CSS = `
 /* ── Individual Vex card ─────────────────────────────────────────── */
 .vex-card {
   flex: 1;
-  max-width: 56px;
-  min-width: 44px;
-  height: 78px;
+  max-width: 64px;
+  min-width: 48px;
+  height: 82px;
   background: linear-gradient(160deg, #0d1520 0%, #080e18 100%);
   border-radius: 6px;
   display: flex;
@@ -52,7 +52,7 @@ const BAR_CSS = `
   padding: 0 4px 5px;
   gap: 3px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 3px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   animation: vex-card-in 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
@@ -104,8 +104,9 @@ const BAR_CSS = `
   font-size: 6px;
   color: #ddd;
   text-align: center;
-  line-height: 1.4;
+  line-height: 1.5;
   word-break: break-word;
+  padding: 0 2px;
 }
 
 /* Rank badge (Roman numeral) */

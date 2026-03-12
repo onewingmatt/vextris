@@ -37,6 +37,7 @@ const SHOP_CSS = `
   font-family: "Press Start 2P", monospace;
   gap: 24px;
   backdrop-filter: blur(4px);
+  touch-action: none;
 }
 
 #vextris-shop h2 {
@@ -64,8 +65,8 @@ const SHOP_CSS = `
 }
 
 #vextris-shop .card {
-  width: 180px;
-  min-height: 220px;
+  width: 200px;
+  min-height: 240px;
   background: #0d1117;
   border: 2px solid #333;
   border-radius: 10px;
@@ -115,7 +116,8 @@ const SHOP_CSS = `
 #vextris-shop .card-name {
   font-size: 11px;
   color: #fff;
-  line-height: 1.5;
+  line-height: 1.6;
+  padding-right: 4px;
 }
 
 #vextris-shop .card-rank {
@@ -128,8 +130,9 @@ const SHOP_CSS = `
 #vextris-shop .card-desc {
   font-size: 8px;
   color: #bbb;
-  line-height: 1.7;
+  line-height: 1.8;
   flex: 1;
+  padding: 4px 0;
 }
 
 #vextris-shop .card-downside {

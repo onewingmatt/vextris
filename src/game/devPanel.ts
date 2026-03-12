@@ -24,7 +24,7 @@ const PANEL_CSS = `
   position: fixed;
   top: 12px;
   right: 12px;
-  width: 260px;
+  width: 280px;
   background: rgba(8, 12, 20, 0.96);
   border: 2px solid #444;
   border-radius: 8px;
@@ -34,6 +34,7 @@ const PANEL_CSS = `
   padding: 14px;
   gap: 0;
   box-shadow: 0 0 30px rgba(0,0,0,0.7);
+  touch-action: none;
 }
 #${PANEL_ID}.open { display: block; }
 
@@ -63,9 +64,8 @@ const PANEL_CSS = `
   font-size: 8px;
   color: #ccc;
   flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+  padding-right: 4px;
 }
 #${PANEL_ID} .vex-name.color-kind { color: #FFD700; }
 #${PANEL_ID} .vex-name.line-kind  { color: #00BFFF; }
