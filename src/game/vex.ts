@@ -62,6 +62,7 @@ export type Vex = {
     rank: VexRank
     description: string
     downsideDescription: string
+    getFlavorText?: (rank: VexRank) => string
 
     /**
      * Returns the additive multiplier bonus this Vex contributes to its bucket
@@ -183,6 +184,82 @@ export function getPressureTimeLimit(rank: VexRank): number {
 export function getQuicksandBonusMultiplier(rank: VexRank): number {
     return rank * 0.15
 }
+
+type FlavorTextTiers = {
+    warning: string
+    manifestation: string
+    consumption: string
+}
+
+const FLAVOR_TEXT_BY_VEX_ID = {
+    blackout: {
+        warning: 'The Lantern Sisters taught this pact in cellars of blind stone. They said the altar listens best when the last candle dies.',
+        manifestation: 'The candles drown one by one, though no wind walks here. The altar drinks the dark and asks for deeper tribute.',
+        consumption: 'Extinguish the final flame. Let the void read your pulse.',
+    },
+    fog: {
+        warning: 'Marsh-priests of the Sallow Fen carved this sigil in drowned bone. They warned that low places remember every failed ritual.',
+        manifestation: 'Cold mist crawls over the altar steps and clings to your throat. Runes vanish beneath it, whispering from below.',
+        consumption: 'Do not look down. The fog is looking up.',
+    },
+    corruption: {
+        warning: 'The Rot-Coven mixed seven inks with gravewater and named it mercy. Any rune marked with it forgets its first oath.',
+        manifestation: 'Pigment bleeds across the altar like living mold. Neighboring runes trade names while you watch.',
+        consumption: 'Nothing keeps its color. Nothing keeps its name.',
+    },
+    quicksand: {
+        warning: 'Pilgrims of the Sinking Choir swore this pact in dry wells. They learned the altar has a hunger for haste.',
+        manifestation: 'The stone beneath the ritual turns to starving sand. Every rune sinks before your hands can bless it.',
+        consumption: 'Stop fighting the pull. Descend with the offering.',
+    },
+    amnesia: {
+        warning: 'The Mneme-Eaters erased whole covens and left only blank tablets. Their pact strips memory from every rite.',
+        manifestation: 'The next omen will not come when called. Your own hands move as if they belong to a dead augur.',
+        consumption: 'Forget the pattern. Obey the void.',
+    },
+    rising_dread: {
+        warning: 'The first altar was raised over a pit of unfinished rites. The buried augurs still press their knuckles against the stone.',
+        manifestation: 'The floor bucks upward in wet, deliberate breaths. New rows of old offerings force themselves into your ritual.',
+        consumption: 'Make room below you. They are rising through your seat.',
+    },
+    lead_fingers: {
+        warning: 'The Iron Nuns wore prayer weights until their fingers split. They forged this pact to keep trembling augurs obedient.',
+        manifestation: 'Your joints thicken like poured lead. Each command reaches the altar late, as if spoken underwater.',
+        consumption: 'Your hands are not yours. The ritual moves them.',
+    },
+    whiplash: {
+        warning: 'Duelists of the Lash-Coven struck the altar to wake sleeping judges. Every impact bought tribute and took sight in return.',
+        manifestation: 'Each violent descent cracks a black flare across your vision. The room blinks out, then returns closer.',
+        consumption: 'Strike harder. Blink less. Do not miss the dark.',
+    },
+    tremor: {
+        warning: 'Miners beneath Hollow Veyl heard this pact before they saw it. Their runes danced on untouched altars.',
+        manifestation: 'The altar shivers between heartbeats and dust falls upward. Your teeth count the pulses for you.',
+        consumption: 'The stone is awake. Match its trembling.',
+    },
+    mirage: {
+        warning: 'Mirror-witches polished obsidian until it answered with false futures. Their pact shows where a rune could be, never where it will bleed.',
+        manifestation: 'Pale doubles hover over the altar and point to wrong endings. You follow one and the other laughs.',
+        consumption: 'Trust no reflection. The void prefers liars.',
+    },
+    jinxed: {
+        warning: 'Hex-smiths of the Crooked Star bound chance into a copper charm. It blesses no ritual; it only chooses.',
+        manifestation: 'Runes arrive twisted, painted in borrowed blood, eager to break formation. The altar applauds every mistake.',
+        consumption: 'Let chaos officiate. Offer without intention.',
+    },
+    pressure: {
+        warning: 'The Bell of Vhar was cast to end rituals before dawn. Its pact counts every breath as debt.',
+        manifestation: 'An unseen toll follows each rune across the altar. When the count ends, the offering is taken from your hands.',
+        consumption: 'Hear the final bell. Surrender before it strikes.',
+    },
+} as const satisfies Record<string, FlavorTextTiers>
+
+function getFlavorTextForRank(vexId: keyof typeof FLAVOR_TEXT_BY_VEX_ID, rank: VexRank): string {
+    const tiers = FLAVOR_TEXT_BY_VEX_ID[vexId]
+    if (rank >= 10) return tiers.consumption
+    if (rank >= 5) return tiers.manifestation
+    return tiers.warning
+}
 // interpolated values rather than lookup tables.)
 // const rankStep = (rank: 1 | 2 | 3, base: number, step: number) =>
 //   base + step * (rank - 1)
@@ -204,6 +281,7 @@ export const createVexBlackout = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10):
     rank,
     description: 'The lights flicker; colour clusters score more.',
     downsideDescription: 'Screen periodically darkens, obscuring the board.',
+    getFlavorText: (r) => getFlavorTextForRank('blackout', r),
 
     getMultiplier(ctx, r) {
         if (ctx.totalClusterPoints === 0) return 0
@@ -241,6 +319,7 @@ export const createVexFog = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex 
     rank,
     description: 'The depths are obscured; colour clusters score more.',
     downsideDescription: 'Bottom rows are covered by fog.',
+    getFlavorText: (r) => getFlavorTextForRank('fog', r),
 
     getMultiplier(ctx, r) {
         if (ctx.totalClusterPoints === 0) return 0
@@ -279,6 +358,7 @@ export const createVexCorruption = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
     rank,
     description: 'Colours rot your best patterns; clusters score more.',
     downsideDescription: 'Placed blocks mutate over time, targeting big clusters.',
+    getFlavorText: (r) => getFlavorTextForRank('corruption', r),
 
     getMultiplier(ctx, r) {
         if (ctx.totalClusterPoints === 0) return 0
@@ -314,6 +394,7 @@ export const createVexQuicksand = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10)
     rank,
     description: 'Pieces fall faster; line clears score more.',
     downsideDescription: 'Base drop speed increases noticeably.',
+    getFlavorText: (r) => getFlavorTextForRank('quicksand', r),
 
     getMultiplier(ctx, r) {
         if (ctx.linesCleared === 0) return 0
@@ -342,6 +423,7 @@ export const createVexAmnesia = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): 
     rank,
     description: "You forget what's coming; line clears score more.",
     downsideDescription: 'Next-piece preview (and later hold, colours) is hidden.',
+    getFlavorText: (r) => getFlavorTextForRank('amnesia', r),
 
     getMultiplier(ctx, r) {
         if (ctx.linesCleared === 0) return 0
@@ -373,6 +455,7 @@ export const createVexRisingDread = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
     rank,
     description: 'The dead rise beneath you; line clears score more.',
     downsideDescription: 'Garbage rows periodically rise from the bottom.',
+    getFlavorText: (r) => getFlavorTextForRank('rising_dread', r),
 
     getMultiplier(ctx, r) {
         if (ctx.linesCleared === 0) return 0
@@ -411,6 +494,7 @@ export const createVexLeadFingers = (rank: VexRank): Vex => ({
     rank,
     description: 'Movement grows sluggish; line clears score more.',
     downsideDescription: 'DAS and ARR delays become increasingly heavy.',
+    getFlavorText: (r) => getFlavorTextForRank('lead_fingers', r),
 
     getMultiplier(ctx, r) {
         if (ctx.linesCleared === 0) return 0
@@ -442,6 +526,7 @@ export const createVexWhiplash = (rank: VexRank): Vex => ({
     rank,
     description: 'Hard drops blind you; line clears score more.',
     downsideDescription: 'Manual hard-drops trigger brief blackouts.',
+    getFlavorText: (r) => getFlavorTextForRank('whiplash', r),
 
     getMultiplier(ctx, r) {
         if (ctx.linesCleared === 0) return 0
@@ -473,6 +558,7 @@ export const createVexTremor = (rank: VexRank): Vex => ({
     rank,
     description: 'The board shudders; colour clusters score more.',
     downsideDescription: 'Periodic tremors shake your board and camera.',
+    getFlavorText: (r) => getFlavorTextForRank('tremor', r),
 
     getMultiplier(ctx, r) {
         if (ctx.totalClusterPoints === 0) return 0
@@ -504,6 +590,7 @@ export const createVexMirage = (rank: VexRank): Vex => ({
     rank,
     description: 'Ghosts deceive you; colour clusters score more.',
     downsideDescription: 'Ghost piece periodically lies about landing columns.',
+    getFlavorText: (r) => getFlavorTextForRank('mirage', r),
 
     getMultiplier(ctx, r) {
         if (ctx.totalClusterPoints === 0) return 0
@@ -535,6 +622,7 @@ export const createVexJinxed = (rank: VexRank): Vex => ({
     rank,
     description: 'Spawns betray you; line clears score more.',
     downsideDescription: 'Pieces spawn with random rotation, colour, and late-rank column jitter.',
+    getFlavorText: (r) => getFlavorTextForRank('jinxed', r),
 
     getMultiplier(ctx, r) {
         if (ctx.linesCleared === 0) return 0
@@ -566,6 +654,7 @@ export const createVexPressure = (rank: VexRank): Vex => ({
     rank,
     description: 'Every piece is timed; colour clusters score more.',
     downsideDescription: 'Pieces auto hard-drop when their timer expires.',
+    getFlavorText: (r) => getFlavorTextForRank('pressure', r),
 
     getMultiplier(ctx, r) {
         if (ctx.totalClusterPoints === 0) return 0

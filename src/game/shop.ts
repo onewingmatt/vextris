@@ -44,16 +44,21 @@ const SHOP_CSS = `
 #vextris-shop {
   position: fixed;
   inset: 0;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.82);
+  z-index: 1000;
+  font-family: "Press Start 2P", monospace;
+  backdrop-filter: blur(4px);
+  touch-action: pan-y;
+}
+
+#vextris-shop .shop-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.82);
-  z-index: 1000;
-  font-family: "Press Start 2P", monospace;
+  min-height: 100%;
   gap: 20px;
-  backdrop-filter: blur(4px);
-  touch-action: none;
   padding: 18px;
   box-sizing: border-box;
 }
@@ -182,6 +187,16 @@ const SHOP_CSS = `
   align-self: flex-end;
 }
 
+#vextris-shop .vex-flavor-text {
+  font-size: 7px;
+  color: #888888;
+  font-style: italic;
+  line-height: 1.8;
+  border-top: 1px solid #2a2a2a;
+  margin-top: 6px;
+  padding-top: 8px;
+}
+
 #vextris-shop .quicksand-slot {
   width: min(100%, 760px);
   background: rgba(13, 17, 23, 0.88);
@@ -242,6 +257,7 @@ const SHOP_CSS = `
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  pointer-events: none;
 }
 
 #vextris-shop .qs-tier-name {
@@ -262,11 +278,6 @@ const SHOP_CSS = `
 }
 
 @media (max-width: 700px) {
-  #vextris-shop {
-    justify-content: flex-start;
-    overflow-y: auto;
-  }
-
   #vextris-shop .cards {
     gap: 12px;
   }
@@ -497,6 +508,10 @@ function renderQuicksandTierCard(tier: QuicksandTierState): string {
   `
 }
 
+function getCardFlavorText(vex: Vex, rank: VexRank): string {
+  return vex.getFlavorText?.(rank) ?? ''
+}
+
 export function showVexShop(
   activeVexes: Vex[],
   completedLevel: number,
@@ -514,17 +529,21 @@ export function showVexShop(
   const overlay = document.createElement('div')
   overlay.id = 'vextris-shop'
   overlay.innerHTML = `
-    <h2>LEVEL ${completedLevel} CLEAR!</h2>
-    <div class="shop-subtitle">CHOOSE YOUR VEX</div>
-    <div class="cards">
-      ${offers.map((o, i) => renderCard(o, i)).join('')}
+    <div class="shop-inner">
+      <h2>The Crossroads</h2>
+      <div class="shop-subtitle">SEAL ${completedLevel} BROKEN - CHOOSE YOUR PACT</div>
+      <div class="cards">
+        ${offers.map((o, i) => renderCard(o, i)).join('')}
+      </div>
+      ${renderQuicksandSlot(quicksandTiers, quicksandRank)}
     </div>
-    ${renderQuicksandSlot(quicksandTiers, quicksandRank)}
   `
 
   document.body.appendChild(overlay)
 
   let selectedQuicksandTier: 1 | 2 | 3 | 0 = 0
+
+  const quicksandTitleEl = overlay.querySelector<HTMLElement>('.quicksand-title')
 
   overlay.querySelectorAll<HTMLButtonElement>('button.quicksand-tier').forEach((el) => {
     el.addEventListener('click', () => {
@@ -539,9 +558,11 @@ export function showVexShop(
 
       if (alreadySelected) {
         selectedQuicksandTier = 0
+        if (quicksandTitleEl) quicksandTitleEl.textContent = 'BONUS HEX: QUICKSAND (OPTIONAL)'
       } else {
         selectedQuicksandTier = tierValue
         el.classList.add('selected')
+        if (quicksandTitleEl) quicksandTitleEl.textContent = `+${tierValue} RANK SELECTED — NOW PICK A CARD`
       }
 
       audioManager.playSfx('uiClick')
@@ -575,6 +596,7 @@ function renderCard(offer: ShopOffer, idx: number): string {
     const kindLabel = proto.kind === 'color' ? 'COLOUR VEX' : 'LINE VEX'
     const rarityLabel = normalizeRarityLabel(proto.rarity)
     const mult = proto.getMultiplier(DUMMY_CTX, 1)
+    const flavorText = getCardFlavorText(proto, 1)
 
     return `
       <button type="button" class="card ${kindClass}" data-offer-idx="${idx}">
@@ -585,6 +607,7 @@ function renderCard(offer: ShopOffer, idx: number): string {
         <div class="card-desc">${proto.description}</div>
         <div class="card-downside">! ${proto.downsideDescription}</div>
         <div class="card-mult">+${(mult * 100).toFixed(0)}% mult</div>
+        <div class="vex-flavor-text">${flavorText}</div>
       </button>
     `
   }
@@ -597,6 +620,7 @@ function renderCard(offer: ShopOffer, idx: number): string {
   const multBefore = vex.getMultiplier(DUMMY_CTX, fromRank)
   const multAfter = vex.getMultiplier(DUMMY_CTX, toRank)
   const multDelta = Math.max(0, multAfter - multBefore)
+  const flavorText = getCardFlavorText(vex, toRank)
 
   return `
     <button type="button" class="card ${kindClass}" data-offer-idx="${idx}">
@@ -612,6 +636,7 @@ function renderCard(offer: ShopOffer, idx: number): string {
       <div class="card-desc">${vex.description}</div>
       <div class="card-downside">! ${vex.downsideDescription}</div>
       <div class="card-mult">+${(multDelta * 100).toFixed(0)}% more mult</div>
+      <div class="vex-flavor-text">${flavorText}</div>
     </button>
   `
 }

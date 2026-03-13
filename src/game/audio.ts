@@ -30,6 +30,7 @@ export type SfxId =
   | 'risingImpact'
   | 'blackout'
   | 'fog'
+  | 'tremor'
 
 type SfxOptions = {
   linesCleared?: number
@@ -56,6 +57,7 @@ const VEX_SFX = new Set<SfxId>([
   'risingImpact',
   'blackout',
   'fog',
+  'tremor',
 ])
 
 const COOLDOWN_MS: Record<SfxId, number> = {
@@ -76,6 +78,7 @@ const COOLDOWN_MS: Record<SfxId, number> = {
   risingImpact: 220,
   blackout: 1200,
   fog: 900,
+  tremor: 520,
 }
 
 // Final per-event gain trims applied after the channel fader.
@@ -97,6 +100,7 @@ const SYNTH_EVENT_GAIN: Record<SfxId, number> = {
   risingImpact: 0.90,
   blackout: 0.58,
   fog: 0.52,
+  tremor: 0.62,
 }
 
 // Selected high-impact cues now prefer file assets, with synth fallback.
@@ -332,6 +336,12 @@ export class AudioManager {
         const amp = 0.018 + rank * 0.0022
         this.noise(eventGain, 0.3, amp, 1100)
         this.tone(eventGain, 120, 95, 0.26, amp * 0.75, 'sine')
+        break
+      }
+      case 'tremor': {
+        const amp = 0.018 + rank * 0.0016
+        this.tone(eventGain, 82, 58, 0.14, amp, 'triangle')
+        this.noise(eventGain, 0.08, amp * 0.8, 260)
         break
       }
     }

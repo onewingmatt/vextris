@@ -53,8 +53,7 @@ export class GameScene extends Phaser.Scene {
   private lines = 0
   private gravityTimer = 0
   private gravityDelay = GRAVITY_TABLE[0]
-  private gameOver = false
-  private clearingLines: number[] = []
+    private clearingLines: number[] = []
   private scoringClusters: { blocks: { x: number, y: number }[], color: number }[] = []
   private clearTimer = 0
 
@@ -77,7 +76,7 @@ export class GameScene extends Phaser.Scene {
   /** Consecutive scoring moves without a break. Unused for now; always 0. */
   private combo = 0
   /** True while the between-level shop is open; pauses all game logic. */
-  private shopping = false
+  private gameState: 'MENU' | 'PLAYING' | 'PAUSED' | 'SHOP' | 'GAMEOVER' = 'MENU'
 
   /** Timer IDs for Vex effects (e.g., Rising Dread's garbage timer). Keyed by vex.id. */
   private vexIntervals: Map<string, NodeJS.Timeout> = new Map()
@@ -133,6 +132,8 @@ export class GameScene extends Phaser.Scene {
   private zKey!: Phaser.Input.Keyboard.Key
   private xKey!: Phaser.Input.Keyboard.Key
   private spaceKey!: Phaser.Input.Keyboard.Key
+  private pKey!: Phaser.Input.Keyboard.Key
+  private escKey!: Phaser.Input.Keyboard.Key
 
   // DAS variables
   private leftDownTime = 0
@@ -327,7 +328,7 @@ export class GameScene extends Phaser.Scene {
 
     const scheduleCycle = () => {
       const offTimer = setTimeout(() => {
-        if (!this.shopping && !this.gameOver) {
+        if (this.gameState !== 'SHOP' && this.gameState !== 'GAMEOVER') {
           this.mirageActive = true
           let colOffset = Phaser.Math.Between(-cfg.colRange, cfg.colRange)
           if (colOffset === 0) {
@@ -502,7 +503,7 @@ export class GameScene extends Phaser.Scene {
 
     const scheduleTick = () => {
       const timeoutId = setTimeout(() => {
-        if (!this.shopping && !this.gameOver) {
+        if (this.gameState !== 'SHOP' && this.gameState !== 'GAMEOVER') {
           this.applyCorruptionTick(rank, cellsPerTick)
           audioManager.playSfx('corruption', { rank })
         }
@@ -563,6 +564,7 @@ export class GameScene extends Phaser.Scene {
 
     // Create graphics for rendering
     this.graphics = this.add.graphics();
+    this.setupUI();
 
     const hudX = 416;
     let hudY = 112;
@@ -577,13 +579,13 @@ export class GameScene extends Phaser.Scene {
     };
     const hudValueFont = { ...hudFont, fontSize: '14px' };
 
-    // LEVEL
-    this.add.text(hudX, hudY, 'LEVEL', hudFont).setOrigin(0, 0);
+    // SEAL
+    this.add.text(hudX, hudY, 'SEAL', hudFont).setOrigin(0, 0);
     this.hudLevelText = this.add.text(hudX, hudY + 20, '1', { ...hudFont, color: '#32CD32', fontSize: '22px' }).setOrigin(0, 0);
     hudY += 60;
 
-    // SCORE  (cur / target)
-    this.add.text(hudX, hudY, 'SCORE', hudFont).setOrigin(0, 0);
+    // TRIBUTE  (cur / target)
+    this.add.text(hudX, hudY, 'TRIBUTE', hudFont).setOrigin(0, 0);
     this.hudScoreText = this.add.text(hudX, hudY + 20, '0/800', { ...hudValueFont, color: '#00BFFF' }).setOrigin(0, 0);
     hudY += 60;
 
@@ -733,7 +735,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateVexAmbienceAudio(nowMs: number): void {
-    if (this.shopping || this.gameOver) return
+    if (this.gameState !== 'PLAYING') return
 
     const fogRank = this.getActiveVexRank('fog')
     if (fogRank > 0) {
@@ -796,6 +798,8 @@ export class GameScene extends Phaser.Scene {
     this.zKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z)
     this.xKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.X)
     this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
+    this.pKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.P)
+    this.escKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
   }
 
   private handleInput(delta: number, time: number) {
@@ -1202,7 +1206,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Draw ghost piece
-    if (this.currentPiece && !this.gameOver && ghostVisible) {
+    if (this.currentPiece && this.gameState !== 'GAMEOVER' && ghostVisible) {
       const ghostPos = this.getGhostPosition();
       if (ghostPos && ghostPos.y > this.currentPiece.position.y) {
         const ghostRenderX = ghostPos.x + (this.mirageActive ? this.mirageColOffset : 0)
@@ -1358,7 +1362,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
-    if (this.gameOver || this.shopping) return;
+    if (Phaser.Input.Keyboard.JustDown(this.pKey) || Phaser.Input.Keyboard.JustDown(this.escKey)) {
+      this.togglePause();
+    }
+
+    if (this.gameState !== 'PLAYING') return;
 
     // FPS cap: throttle game updates to TARGET_FPS
     if (this.lastUpdateTime !== 0 && time - this.lastUpdateTime < this.FRAME_TIME_MS) {
@@ -1681,7 +1689,7 @@ export class GameScene extends Phaser.Scene {
       // Use local reference to help TS with type inference after spawn
       const piece = this.currentPiece as Piece | null;
       if (piece && !this.isValidPosition(piece.shape, piece.position)) {
-        this.gameOver = true;
+        this.gameState = 'GAMEOVER';
         this.gameOverBg.setVisible(true);
         this.gameOverText.setVisible(true);
         audioManager.playSfx('fail')
@@ -1819,13 +1827,13 @@ export class GameScene extends Phaser.Scene {
    * Pauses the game and opens the Vex shop. On card pick, advances the level.
    */
   private onLevelComplete(): void {
-    this.shopping = true
+    this.gameState = 'SHOP'
     audioManager.playSfx('levelClear')
 
     // Visual flash before the overlay
     const boardCenterX = 48 + (BOARD_WIDTH * BLOCK_SIZE) / 2
     const boardCenterY = 112 + (BOARD_HEIGHT * BLOCK_SIZE) / 2
-    this.showFloatingText(boardCenterX, boardCenterY, `LEVEL ${this.currentLevel} CLEAR!`, '#32CD32', 1.2)
+    this.showFloatingText(boardCenterX, boardCenterY, `SEAL ${this.currentLevel} BROKEN!`, '#32CD32', 1.2)
     this.cameras.main.flash(300, 50, 255, 50, false)
 
     // Small delay so the flash is visible before overlay appears
@@ -1841,7 +1849,7 @@ export class GameScene extends Phaser.Scene {
    * Called by the shop's onPick callback.
    */
   private startNextLevel(): void {
-    this.shopping = false
+    this.gameState = 'PLAYING'
     this.currentLevel++
     this.currentLevelParams = getLevelParams(this.currentLevel)
     this.currentLevelScore = 0
@@ -1868,7 +1876,7 @@ export class GameScene extends Phaser.Scene {
    * Currently triggers game over; can later be wired to a retry flow.
    */
   private onLevelFailed(): void {
-    this.gameOver = true
+    this.gameState = 'GAMEOVER'
     this.gameOverBg.setVisible(true)
     this.gameOverText.setText('RESOLVE DEPLETED!')
     this.gameOverText.setStyle({ color: '#FF6347' })
@@ -2007,7 +2015,7 @@ export class GameScene extends Phaser.Scene {
     for (let x = 0; x < BOARD_WIDTH; x++) {
       if (this.board[0][x].filled) {
         // Top row has a block — trigger game over via existing logic
-        this.gameOver = true;
+        this.gameState = 'GAMEOVER';
         this.gameOverBg.setVisible(true);
         this.gameOverText.setText('GARBAGE OVERFLOW!');
         this.gameOverText.setStyle({ color: '#FF6347' });
@@ -2095,7 +2103,7 @@ export class GameScene extends Phaser.Scene {
 
       // After 1 second, push garbage and schedule next event
       const timeoutId = setTimeout(() => {
-        if (!this.shopping && !this.gameOver) {
+        if (this.gameState !== 'SHOP' && this.gameState !== 'GAMEOVER') {
           this.pushGarbageRow(gapsPerRow);
         }
         // Schedule next occurrence
@@ -2306,5 +2314,110 @@ export class GameScene extends Phaser.Scene {
     const targetRows = Math.min(BOARD_HEIGHT, Math.max(minimumRows, pressureSurface + paddingRows))
 
     return targetRows * BLOCK_SIZE
+  }
+
+  // --- UI Overlays & State ---
+  private setupUI() {
+    const btnBegin = document.getElementById('btn-begin-rite');
+    if (btnBegin) {
+      btnBegin.onclick = () => {
+        document.getElementById('main-menu')?.classList.add('hidden');
+        this.resetGame();
+        this.gameState = 'PLAYING';
+        audioManager.playSfx('uiClick');
+      };
+    }
+
+    const btnResume = document.getElementById('btn-resume-rite');
+    if (btnResume) {
+      btnResume.onclick = () => this.togglePause();
+    }
+
+    const btnAbandon = document.getElementById('btn-abandon-rite');
+    if (btnAbandon) {
+      btnAbandon.onclick = () => {
+        this.abandonRun();
+      };
+    }
+  }
+
+  private togglePause() {
+    if (this.gameState === 'PLAYING') {
+      this.gameState = 'PAUSED';
+      this.openPauseMenu();
+      audioManager.playSfx('uiClick');
+    } else if (this.gameState === 'PAUSED') {
+      this.gameState = 'PLAYING';
+      this.closePauseMenu();
+      audioManager.playSfx('uiClick');
+    }
+  }
+
+  private openPauseMenu() {
+    const pauseScreen = document.getElementById('pause-screen');
+    const grimoireList = document.getElementById('grimoire-list');
+    if (!pauseScreen || !grimoireList) return;
+
+    grimoireList.innerHTML = '';
+    
+    if (this.activeVexes.length === 0) {
+      const msg = document.createElement('div');
+      msg.className = 'grimoire-pact';
+      msg.style.gridColumn = '1 / -1';
+      msg.style.textAlign = 'center';
+      msg.textContent = 'The altar is clean. No pacts have been struck.';
+      grimoireList.appendChild(msg);
+    } else {
+      this.activeVexes.forEach(vex => {
+        const pact = document.createElement('div');
+        pact.className = 'grimoire-pact';
+        
+        const roman = ['I', 'II', 'III'][vex.rank - 1] || vex.rank;
+        const title = document.createElement('h3');
+        title.textContent = `${vex.name} ${roman}`;
+        
+        const desc = document.createElement('div');
+        desc.textContent = vex.description;
+
+        const flavorText = vex.getFlavorText ? vex.getFlavorText(vex.rank as any) : '';
+        const flavor = document.createElement('span');
+        flavor.className = 'flavor';
+        flavor.textContent = flavorText;
+
+        pact.appendChild(title);
+        pact.appendChild(desc);
+        if (flavorText) pact.appendChild(flavor);
+
+        grimoireList.appendChild(pact);
+      });
+    }
+
+    pauseScreen.classList.remove('hidden');
+  }
+
+  private closePauseMenu() {
+    const pauseScreen = document.getElementById('pause-screen');
+    if (pauseScreen) pauseScreen.classList.add('hidden');
+  }
+
+    private resetGame() {
+    this.initRun();
+    this.initializeBoard();
+    this.canHold = true;
+    this.heldPiece = null;
+    this.currentPiece = null;
+    this.nextPiece = null;
+    this.clearAllVexTimers();
+    this.generateNextPiece();
+    this.spawnPiece();
+    if (this.gameOverBg) this.gameOverBg.setVisible(false);
+    if (this.gameOverText) this.gameOverText.setVisible(false);
+  }
+
+  private abandonRun() {
+    this.closePauseMenu();
+    document.getElementById('main-menu')?.classList.remove('hidden');
+    this.resetGame();
+    this.gameState = 'MENU';
   }
 }

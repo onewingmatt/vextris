@@ -202,7 +202,7 @@ async function startServer(mode, port) {
   return { child, url };
 }
 
-async function runSmokeSuite(url) {
+async function runSmokeSuite(url, mode) {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 
@@ -220,6 +220,12 @@ async function runSmokeSuite(url) {
 
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForTimeout(1000);
+
+  const beginButton = page.locator('#btn-begin-rite');
+  if (await beginButton.count()) {
+    await beginButton.click();
+    await page.waitForTimeout(300);
+  }
 
   const bootstrap = await page.evaluate(() => {
     const scene = window.game?.scene?.keys?.GameScene;
@@ -241,6 +247,9 @@ async function runSmokeSuite(url) {
     if (!scene) {
       return { passed: false, details: { reason: 'GameScene not found' } };
     }
+
+    scene.gameState = 'PLAYING';
+    scene.resolveCurrent = Math.max(scene.resolveCurrent, 999);
 
     const height = scene.board.length;
     const width = scene.board[0].length;
@@ -313,8 +322,7 @@ async function runSmokeSuite(url) {
     scene.scoringClusters = [];
     scene.clearTimer = 0;
     scene.gravityTimer = 0;
-    scene.gameOver = false;
-    scene.shopping = false;
+    scene.gameState = 'PLAYING';
     scene.resolveCurrent = Math.max(scene.resolveCurrent, 999);
 
     const linesBefore = scene.lines;
@@ -364,6 +372,82 @@ async function runSmokeSuite(url) {
       },
     };
   });
+
+  let quicksandBonusHex = {
+    passed: true,
+    details: { skipped: mode !== 'dev' },
+  };
+
+  if (mode === 'dev') {
+    await page.evaluate(async () => {
+      const scene = window.game?.scene?.keys?.GameScene;
+      if (!scene) return;
+      const { showVexShop } = await import('/src/game/shop.ts');
+
+      scene.activeVexes = [];
+      scene.resolveCurrent = 80;
+      scene.currentLevelParams = { ...scene.currentLevelParams, resolveMax: 100 };
+      scene.currentLevel = 3;
+      scene.gameState = 'SHOP';
+      window.__quicksandSmokePicked = null;
+
+      showVexShop(
+        scene.activeVexes,
+        scene.currentLevel,
+        scene.resolveCurrent,
+        scene.currentLevelParams.resolveMax,
+        (activeVexes) => {
+          window.__quicksandSmokePicked = activeVexes.map((v) => `${v.id}:${v.rank}`);
+          scene.gameState = 'PLAYING';
+        },
+      );
+    });
+
+    await page.waitForSelector('#vextris-shop', { timeout: 2500 });
+
+    const quicksandTierSetup = await page.evaluate(() => {
+      const plusTwo = document.querySelector('button.quicksand-tier[data-qs-ranks="2"]');
+      const plusThree = document.querySelector('button.quicksand-tier[data-qs-ranks="3"]');
+
+      return {
+        plusTwoDisabled: plusTwo instanceof HTMLButtonElement ? plusTwo.disabled : null,
+        plusThreeDisabled: plusThree instanceof HTMLButtonElement ? plusThree.disabled : null,
+      };
+    });
+
+    await page.click('button.quicksand-tier[data-qs-ranks="2"]');
+    await page.click('button.card');
+
+    await page.waitForFunction(() => !document.getElementById('vextris-shop'), { timeout: 2500 });
+    await page.waitForTimeout(250);
+
+    const quicksandBonusHexDetails = await page.evaluate(() => {
+      const scene = window.game?.scene?.keys?.GameScene;
+      if (!scene) {
+        return { reason: 'GameScene not found' };
+      }
+
+      const quicksand = scene.activeVexes.filter((v) => v.id === 'quicksand');
+      return {
+        quicksandCount: quicksand.length,
+        quicksandRank: quicksand[0]?.rank ?? 0,
+        activeVexes: scene.activeVexes.map((v) => `${v.id}:${v.rank}`),
+      };
+    });
+
+    quicksandBonusHex = {
+      passed:
+        quicksandTierSetup.plusTwoDisabled === false &&
+        quicksandTierSetup.plusThreeDisabled === false &&
+        quicksandBonusHexDetails.quicksandCount === 1 &&
+        quicksandBonusHexDetails.quicksandRank === 2,
+      details: {
+        plusTwoDisabled: quicksandTierSetup.plusTwoDisabled,
+        plusThreeDisabled: quicksandTierSetup.plusThreeDisabled,
+        ...quicksandBonusHexDetails,
+      },
+    };
+  }
 
   const perf = await page.evaluate(() => {
     const scene = window.game?.scene?.keys?.GameScene;
@@ -415,6 +499,7 @@ async function runSmokeSuite(url) {
     { name: 'direct_line_clear', ...directLineClear },
     { name: 'keyboard_setup', ...keyboardSetup },
     { name: 'keyboard_line_clear_e2e', ...keyboardLineClear },
+    { name: 'quicksand_bonus_hex', ...quicksandBonusHex },
     { name: 'perf_microbench', ...perf },
   ];
 
@@ -447,7 +532,7 @@ async function main() {
     serverProcess = child;
 
     const startedAt = Date.now();
-    const report = await runSmokeSuite(url);
+    const report = await runSmokeSuite(url, args.mode);
     const totalMs = Date.now() - startedAt;
 
     console.log('\nSmoke Suite Report');

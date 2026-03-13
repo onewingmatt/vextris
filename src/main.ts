@@ -6,8 +6,7 @@ const config: Phaser.Types.Core.GameConfig = {
   width: 640,
   height: 768,
   scale: {
-    mode: Phaser.Scale.ScaleModes.FIT,
-    autoCenter: Phaser.Scale.Center.CENTER_BOTH
+    mode: Phaser.Scale.ScaleModes.NONE,
   },
   parent: 'game',
   scene: [GameScene],
