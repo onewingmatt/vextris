@@ -1,3 +1,5 @@
+
+
 import Phaser from 'phaser'
 import {
   BOARD_WIDTH,
@@ -17,13 +19,18 @@ import {
   LevelParams,
   getLevelParams,
 } from '../config'
-import { Vex, ScoringContext } from '../vex'
+import { Vex, ScoringContext, VexRank } from '../vex'
 import { showVexShop } from '../shop'
 import { DevPanel } from '../devPanel'
 import { updateVexBar } from '../vexBar'
-import { setFogHeight } from '../effects/fog'
+import { disableBlackout } from '../effects/blackout'
+import { setFogHeight, disableFog } from '../effects/fog'
+import { audioManager } from '../audio'
+import { ensureSoundControls } from '../soundControls'
 
 export class GameScene extends Phaser.Scene {
+  private static readonly BGM_URL = '/Hex%20Cabin%20Riddles.mp3'
+
   private board: Cell[][] = []
   private currentPiece: Piece | null = null
   private nextPiece: Piece | null = null
@@ -38,6 +45,7 @@ export class GameScene extends Phaser.Scene {
   private clearingLines: number[] = []
   private scoringClusters: { blocks: { x: number, y: number }[], color: number }[] = []
   private clearTimer = 0
+
 
   // --- Level Progression ---
   private currentLevel = 1
@@ -58,6 +66,7 @@ export class GameScene extends Phaser.Scene {
   private combo = 0
   /** True while the between-level shop is open; pauses all game logic. */
   private shopping = false
+
   /** Timer IDs for Vex effects (e.g., Rising Dread's garbage timer). Keyed by vex.id. */
   private vexIntervals: Map<string, NodeJS.Timeout> = new Map()
 
@@ -73,6 +82,8 @@ export class GameScene extends Phaser.Scene {
   private hudScoreText!: Phaser.GameObjects.Text  // "cur / target"
   private hudTimeText!: Phaser.GameObjects.Text
   private hudSpeedText!: Phaser.GameObjects.Text  // gravity speed level
+  private hudNextLabelText!: Phaser.GameObjects.Text
+  private hudHoldLabelText!: Phaser.GameObjects.Text
   // HUD dirty tracking - cache previous values to avoid unnecessary setText() calls
   private lastHudLevel = -1
   private lastHudScore = -1
@@ -80,6 +91,9 @@ export class GameScene extends Phaser.Scene {
   private lastHudTime = -1
   private lastHudResolveMax = -1
   private lastHudSpeed = -1
+  // Cached always-visible multiplier values for the scoreline multiplier chips.
+  private lastColorMult = 1
+  private lastLineMult = 1
   private lastCalcTimestamp = 0
   private lastCalcBox!: Phaser.GameObjects.Rectangle
   private lastChips!: { bg: Phaser.GameObjects.Rectangle; text: Phaser.GameObjects.Text; label: Phaser.GameObjects.Text; config: { id: string; icon: string; label: string; color: number; width: number }; clusterTexts?: Phaser.GameObjects.Text[] }[]
@@ -113,9 +127,195 @@ export class GameScene extends Phaser.Scene {
   private rightDownTime = 0
   private lastLeftMove = 0
   private lastRightMove = 0
+  private lastFogPulseAtMs = 0
+  private lastBlackoutPulseAtMs = 0
+  private lastGhostVisible = true
 
   constructor() {
     super({ key: 'GameScene' })
+  }
+
+  private formatMultiplierValue(mult: number): string {
+    return `x${mult.toFixed(2)}`
+  }
+
+  private getActiveVexRank(vexId: string): VexRank | 0 {
+    return this.activeVexes.find(vex => vex.id === vexId)?.rank ?? 0
+  }
+
+  private getQuicksandGravityScale(rank: VexRank | 0): number {
+    if (rank <= 0) return 1
+
+    // Quicksand should feel consistently "fast" without escalating every rank.
+    return 0.78
+  }
+
+  private getAmnesiaRank(): VexRank | 0 {
+    return this.getActiveVexRank('amnesia')
+  }
+
+  private blendColorToGray(color: number, amount: number): number {
+    const blend = Math.max(0, Math.min(1, amount))
+    if (blend <= 0) return color
+
+    const red = (color >> 16) & 0xff
+    const green = (color >> 8) & 0xff
+    const blue = color & 0xff
+    const gray = Math.round(0.299 * red + 0.587 * green + 0.114 * blue)
+
+    const outRed = Math.round(red * (1 - blend) + gray * blend)
+    const outGreen = Math.round(green * (1 - blend) + gray * blend)
+    const outBlue = Math.round(blue * (1 - blend) + gray * blend)
+
+    return (outRed << 16) | (outGreen << 8) | outBlue
+  }
+
+  private blendColors(colorA: number, colorB: number, amount: number): number {
+    const blend = Math.max(0, Math.min(1, amount))
+    const aR = (colorA >> 16) & 0xff
+    const aG = (colorA >> 8) & 0xff
+    const aB = colorA & 0xff
+    const bR = (colorB >> 16) & 0xff
+    const bG = (colorB >> 8) & 0xff
+    const bB = colorB & 0xff
+
+    const outR = Math.round(aR * (1 - blend) + bR * blend)
+    const outG = Math.round(aG * (1 - blend) + bG * blend)
+    const outB = Math.round(aB * (1 - blend) + bB * blend)
+    return (outR << 16) | (outG << 8) | outB
+  }
+
+  private colorToHexString(color: number): string {
+    return `#${color.toString(16).padStart(6, '0')}`
+  }
+
+  private getLineClearThemeColor(linesCleared: number): number {
+    const clampedLines = Math.max(1, Math.min(4, linesCleared))
+    const lineAccentByCount = [0, 0x45c4ff, 0x4fe6c7, 0xffb84d, 0xff6b6b]
+
+    const sortedClusters = [...this.scoringClusters].sort((left, right) => right.blocks.length - left.blocks.length)
+    let themeColor = sortedClusters[0]?.color ?? lineAccentByCount[clampedLines]
+    themeColor = this.blendColors(themeColor, lineAccentByCount[clampedLines], 0.35)
+
+    if (this.getActiveVexRank('corruption') > 0) {
+      themeColor = this.blendColors(themeColor, 0xb15cff, 0.18)
+    }
+    if (this.getActiveVexRank('fog') > 0 || this.getActiveVexRank('blackout') > 0) {
+      themeColor = this.blendColors(themeColor, 0xa7b0ba, 0.22)
+    }
+
+    return themeColor
+  }
+
+  private getLineClearCallout(linesCleared: number): string | null {
+    if (linesCleared >= 4) return 'HEX SWEEP'
+    return null
+  }
+
+  private getAmnesiaPieceDesaturation(rank: VexRank | 0): number {
+    const values: number[] = [0, 0, 0, 0.55, 0.7, 0.82, 0.9, 0.95, 0.98, 1, 1]
+    return values[Math.max(0, Math.min(10, rank))]
+  }
+
+  private getAmnesiaBoardDesaturation(rank: VexRank | 0): number {
+    const values: number[] = [0, 0, 0, 0, 0, 0.15, 0.3, 0.45, 0.6, 0.8, 1]
+    return values[Math.max(0, Math.min(10, rank))]
+  }
+
+  private getAmnesiaGhostVisibilityChance(rank: VexRank | 0): number {
+    const values: number[] = [1, 0.95, 0.9, 0.82, 0.72, 0.6, 0.48, 0.36, 0.24, 0.14, 0.08]
+    return values[Math.max(0, Math.min(10, rank))]
+  }
+
+  private getAmnesiaGhostFlickerWindowMs(rank: VexRank | 0): number {
+    const values: number[] = [9999, 260, 220, 190, 160, 140, 120, 105, 90, 80, 70]
+    return values[Math.max(0, Math.min(10, rank))]
+  }
+
+  private getAmnesiaGhostAlpha(rank: VexRank | 0): number {
+    const values: number[] = [0.2, 0.18, 0.17, 0.16, 0.14, 0.12, 0.1, 0.08, 0.07, 0.06, 0.05]
+    return values[Math.max(0, Math.min(10, rank))]
+  }
+
+  private getFogOccludedAlpha(rank: number): number {
+    const clampedRank = Math.max(0, Math.min(10, Math.floor(rank)))
+    const values: number[] = [1, 1, 0.98, 0.96, 0.93, 0.88, 0.8, 0.7, 0.55, 0.4, 0.28]
+    return values[clampedRank]
+  }
+
+  private getFogHardOcclusionFactor(rank: number): number {
+    const clampedRank = Math.max(0, Math.min(10, Math.floor(rank)))
+    const values: number[] = [0, 0, 0, 0, 0, 0.15, 0.28, 0.45, 0.62, 0.8, 1]
+    return values[clampedRank]
+  }
+
+  private shouldRenderGhostForAmnesia(rank: VexRank | 0): boolean {
+    if (rank <= 0) return true
+
+    const chance = this.getAmnesiaGhostVisibilityChance(rank)
+    if (chance >= 1) return true
+
+    const windowMs = this.getAmnesiaGhostFlickerWindowMs(rank)
+    const bucket = Math.floor(this.time.now / windowMs)
+
+    // Deterministic pseudo-random value per time window so flicker feels jittery
+    // but does not vary per frame.
+    const hashed = ((bucket * 1103515245 + rank * 12345) >>> 0) / 0xffffffff
+    return hashed < chance
+  }
+
+  private getCorruptionParams(rank: VexRank): { intervalMs: number; cellsPerTick: number } {
+    const intervalByRank = [0, 8000, 7200, 6400, 5600, 5000, 4400, 3800, 3200, 2600, 2200]
+    const cellsByRank = [0, 1, 1, 2, 2, 3, 3, 4, 5, 6, 7]
+    return {
+      intervalMs: intervalByRank[rank],
+      cellsPerTick: cellsByRank[rank],
+    }
+  }
+
+  private applyCorruptionTick(cellsPerTick: number): void {
+    if (cellsPerTick <= 0) return
+
+    const filledCells: { x: number; y: number }[] = []
+    for (let y = 0; y < BOARD_HEIGHT; y++) {
+      for (let x = 0; x < BOARD_WIDTH; x++) {
+        if (this.board[y][x].filled) {
+          filledCells.push({ x, y })
+        }
+      }
+    }
+
+    if (filledCells.length === 0) return
+
+    const changes = Math.min(cellsPerTick, filledCells.length)
+    for (let index = 0; index < changes; index++) {
+      const pick = Math.floor(Math.random() * filledCells.length)
+      const { x, y } = filledCells.splice(pick, 1)[0]
+      const current = this.board[y][x].color
+
+      let nextColor = current
+      for (let attempt = 0; attempt < 4 && nextColor === current; attempt++) {
+        nextColor = BLOCK_COLORS[Math.floor(Math.random() * BLOCK_COLORS.length)]
+      }
+      this.board[y][x].color = nextColor
+    }
+  }
+
+  private startCorruptionTimer(rank: VexRank): void {
+    const { intervalMs, cellsPerTick } = this.getCorruptionParams(rank)
+
+    const scheduleTick = () => {
+      const timeoutId = setTimeout(() => {
+        if (!this.shopping && !this.gameOver) {
+          this.applyCorruptionTick(cellsPerTick)
+          audioManager.playSfx('corruption', { rank })
+        }
+        scheduleTick()
+      }, intervalMs)
+      this.vexIntervals.set('corruption', timeoutId)
+    }
+
+    scheduleTick()
   }
 
   create() {
@@ -144,6 +344,21 @@ export class GameScene extends Phaser.Scene {
 
     // Set up input
     this.setupInput()
+
+    // Audio: start BGM + controls, with first-gesture unlock for browsers.
+    audioManager.init()
+    audioManager.startBgm(GameScene.BGM_URL)
+    this.input.once('pointerdown', () => {
+      audioManager.unlock()
+      audioManager.startBgm(GameScene.BGM_URL)
+    })
+    this.input.keyboard?.once('keydown', () => {
+      audioManager.unlock()
+      audioManager.startBgm(GameScene.BGM_URL)
+    })
+    ensureSoundControls()
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => audioManager.stopBgm())
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => audioManager.stopBgm())
 
     // Set background
     this.cameras.main.setBackgroundColor(COLORS.background)
@@ -187,11 +402,11 @@ export class GameScene extends Phaser.Scene {
     hudY += 60;
 
     // NEXT
-    this.add.text(hudX, hudY, 'NEXT', hudFont).setOrigin(0, 0);
+    this.hudNextLabelText = this.add.text(hudX, hudY, 'NEXT', hudFont).setOrigin(0, 0);
     hudY += 145;
 
     // HOLD
-    this.add.text(hudX, hudY, 'HOLD', hudFont).setOrigin(0, 0);
+    this.hudHoldLabelText = this.add.text(hudX, hudY, 'HOLD', hudFont).setOrigin(0, 0);
 
     // Last full-clear calculation — two-row scoreline panel
     const boardBottomY = 112 + BOARD_HEIGHT * BLOCK_SIZE;
@@ -241,11 +456,11 @@ export class GameScene extends Phaser.Scene {
     this.add.rectangle(boxX, separatorY, boxWidth - 20, 1, 0x222222, 0.8)
       .setOrigin(0.5, 0.5).setDepth(6);
 
-    // Bottom row: COLOR, CLEARED, LINE MULT, TOTAL
+    // Bottom row: CLEARED (left), multipliers (middle), TOTAL (right)
     const bottomConfigs = [
-      { id: 'color', icon: 'C', label: 'COLOR', color: 0x00BFFF, width: 80 },
-      { id: 'cleared', icon: '#', label: 'CLEARED', color: 0x8a8a8a, width: 80 },
-      { id: 'lineMult', icon: '×', label: 'LINE MULT', color: 0xFFA500, width: 100 },
+      { id: 'cleared', icon: '#', label: 'CLEARED', color: 0x8a8a8a, width: 92 },
+      { id: 'color', icon: 'C', label: 'COLOR', color: 0x00BFFF, width: 98 },
+      { id: 'lineMult', icon: 'L', label: 'LINE', color: 0xFFA500, width: 108 },
       { id: 'total', icon: 'T', label: 'TOTAL', color: 0x7CFC00, width: 180 },
     ];
     const bottomContentWidth = bottomConfigs.reduce((sum, c) => sum + c.width, 0);
@@ -289,6 +504,12 @@ export class GameScene extends Phaser.Scene {
       bottomChipX += config.width + chipGap;
     }
 
+    const bottomChipMap = new Map(this.lastChips.map(c => [c.config.id, c]))
+    bottomChipMap.get('color')?.text.setText(this.formatMultiplierValue(this.lastColorMult))
+    bottomChipMap.get('lineMult')?.text.setText(this.formatMultiplierValue(this.lastLineMult))
+    bottomChipMap.get('color')?.label.setVisible(false)
+    bottomChipMap.get('lineMult')?.label.setVisible(false)
+
     // Game Over UI
     const gameOverX = 320; // Center of the 640px wide game
     const gameOverY = Math.floor(112 + (BOARD_HEIGHT * BLOCK_SIZE) / 2);
@@ -312,6 +533,28 @@ export class GameScene extends Phaser.Scene {
         this.setupVexEffects();
       })
       this.devPanel.bindKey()
+    }
+  }
+
+  private updateVexAmbienceAudio(nowMs: number): void {
+    if (this.shopping || this.gameOver) return
+
+    const fogRank = this.getActiveVexRank('fog')
+    if (fogRank > 0) {
+      const fogInterval = Math.max(1700, 8800 - fogRank * 620)
+      if (nowMs - this.lastFogPulseAtMs >= fogInterval) {
+        audioManager.playSfx('fog', { rank: fogRank })
+        this.lastFogPulseAtMs = nowMs
+      }
+    }
+
+    const blackoutRank = this.getActiveVexRank('blackout')
+    if (blackoutRank > 0) {
+      const blackoutInterval = Math.max(1300, 10500 - blackoutRank * 900)
+      if (nowMs - this.lastBlackoutPulseAtMs >= blackoutInterval) {
+        audioManager.playSfx('blackout', { rank: blackoutRank })
+        this.lastBlackoutPulseAtMs = nowMs
+      }
     }
   }
 
@@ -400,6 +643,7 @@ export class GameScene extends Phaser.Scene {
     const ghostPos = this.getGhostPosition()
     if (ghostPos) {
       this.currentPiece.position = ghostPos
+      audioManager.playSfx('hardDrop')
 
       // Screen shake and lock immediately
       this.cameras.main.shake(100, 0.003)
@@ -417,6 +661,9 @@ export class GameScene extends Phaser.Scene {
       this.currentPiece.position = newPos
       // GB Skating: reset gravity on move
       this.gravityTimer = 0
+      if (dy === 0 && dx !== 0) {
+        audioManager.playSfx('move')
+      }
       return true
     }
     return false
@@ -447,6 +694,7 @@ export class GameScene extends Phaser.Scene {
         this.currentPiece.colors = rotatedColors;
         // GB Rotation Stall: reset gravity on rotate
         this.gravityTimer = 0;
+        audioManager.playSfx('rotate')
         return; // Success
       }
     }
@@ -508,6 +756,7 @@ export class GameScene extends Phaser.Scene {
     this.heldPiece = newHeldPiece;
     this.canHold = false;
     this.gravityTimer = 0;
+    audioManager.playSfx('hold')
   }
 
   private getGhostPosition(): Position | null {
@@ -541,6 +790,12 @@ export class GameScene extends Phaser.Scene {
     // TODO: Vex modifiers can change this per-piece Resolve cost or refund on big clears.
     this.resolveCurrent -= this.PERPIECE_DRAIN
     if (this.resolveCurrent < 0) this.resolveCurrent = 0
+
+    audioManager.playSfx('lock')
+    const quicksandRank = this.getActiveVexRank('quicksand')
+    if (quicksandRank > 0) {
+      audioManager.playSfx('quicksand', { rank: quicksandRank })
+    }
   }
 
   private clearLines() {
@@ -598,6 +853,18 @@ export class GameScene extends Phaser.Scene {
           this.scoringClusters.push({ blocks: cluster, color: block.color });
         }
       });
+
+      const linesCleared = this.clearingLines.length
+      const themedBurstCount = Math.max(0, linesCleared - 2)
+      if (themedBurstCount > 0) {
+        const themeColor = this.getLineClearThemeColor(linesCleared)
+        const boardCenterX = 48 + (BOARD_WIDTH * BLOCK_SIZE) / 2
+        const firstRow = this.clearingLines[0]
+        const lastRow = this.clearingLines[this.clearingLines.length - 1]
+        const midRow = (firstRow + lastRow) / 2
+        const rowCenterY = 112 + midRow * BLOCK_SIZE + BLOCK_SIZE / 2
+        this.createParticles(boardCenterX, rowCenterY, themedBurstCount, themeColor)
+      }
     }
   }
 
@@ -622,6 +889,46 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private renderThematicLineClearOverlay(boardOffsetX: number, boardOffsetY: number): void {
+    if (this.clearTimer <= 0 || this.clearingLines.length === 0) return
+
+    const timerMax = 5
+    const progress = 1 - Math.max(0, Math.min(1, this.clearTimer / timerMax))
+    const pulse = 0.45 + 0.55 * Math.sin(progress * Math.PI)
+    const linesCleared = this.clearingLines.length
+    const themeColor = this.getLineClearThemeColor(linesCleared)
+
+    const boardWidthPx = BOARD_WIDTH * BLOCK_SIZE
+    const boardHeightPx = BOARD_HEIGHT * BLOCK_SIZE
+
+    const ambientAlpha = Math.min(0.22, (0.05 + linesCleared * 0.03) * pulse)
+    this.graphics.fillStyle(themeColor, ambientAlpha)
+    this.graphics.fillRect(boardOffsetX, boardOffsetY, boardWidthPx, boardHeightPx)
+
+    const sweepWidth = Math.max(24, Math.floor(BLOCK_SIZE * (1 + linesCleared * 0.25)))
+    const sweepTravel = boardWidthPx + sweepWidth * 2
+    const sweepX = boardOffsetX - sweepWidth + progress * sweepTravel
+    const rowAlpha = Math.min(0.75, (0.26 + linesCleared * 0.08) * pulse)
+
+    for (const row of this.clearingLines) {
+      const rowY = boardOffsetY + row * BLOCK_SIZE
+
+      this.graphics.fillStyle(themeColor, rowAlpha)
+      this.graphics.fillRect(boardOffsetX, rowY, boardWidthPx, BLOCK_SIZE)
+
+      this.graphics.fillStyle(0xffffff, Math.min(0.42, 0.22 + linesCleared * 0.05) * pulse)
+      this.graphics.fillRect(sweepX, rowY, sweepWidth, BLOCK_SIZE)
+
+      this.graphics.lineStyle(2, themeColor, Math.min(0.9, 0.45 + linesCleared * 0.08) * pulse)
+      this.graphics.moveTo(boardOffsetX, rowY + 1)
+        .lineTo(boardOffsetX + boardWidthPx, rowY + 1)
+        .stroke()
+      this.graphics.moveTo(boardOffsetX, rowY + BLOCK_SIZE - 1)
+        .lineTo(boardOffsetX + boardWidthPx, rowY + BLOCK_SIZE - 1)
+        .stroke()
+    }
+  }
+
   private render() {
     this.graphics.clear();
 
@@ -629,6 +936,19 @@ export class GameScene extends Phaser.Scene {
     const boardOffsetY = 112;
     const severeFog = this.fogRank >= 9 && this.fogHeightPx > 0
     const fogTopLocalY = BOARD_HEIGHT * BLOCK_SIZE - this.fogHeightPx
+    const amnesiaRank = this.getAmnesiaRank()
+    const hideNextPreview = amnesiaRank >= 1
+    const hideHoldPreview = amnesiaRank >= 2
+    const amnesiaPieceDesaturation = this.getAmnesiaPieceDesaturation(amnesiaRank)
+    const amnesiaBoardDesaturation = this.getAmnesiaBoardDesaturation(amnesiaRank)
+    const ghostVisible = this.shouldRenderGhostForAmnesia(amnesiaRank)
+    const ghostAlpha = this.getAmnesiaGhostAlpha(amnesiaRank)
+    const fogOccludedAlpha = this.getFogOccludedAlpha(this.fogRank)
+
+    if (amnesiaRank > 0 && ghostVisible !== this.lastGhostVisible) {
+      audioManager.playSfx('amnesia', { rank: amnesiaRank })
+    }
+    this.lastGhostVisible = ghostVisible
 
     // Draw background panel for board
     this.graphics.fillStyle(0x0a0a0a, 0.8);
@@ -652,19 +972,22 @@ export class GameScene extends Phaser.Scene {
         if (this.fogRank > 0) {
           color = this.desaturateColorByFogRank(color);
         }
+        if (amnesiaBoardDesaturation > 0) {
+          color = this.blendColorToGray(color, amnesiaBoardDesaturation)
+        }
 
         const px = Math.floor(boardOffsetX + x * BLOCK_SIZE);
         const py = Math.floor(boardOffsetY + y * BLOCK_SIZE);
 
         if (cell.filled || this.clearingLines.includes(y)) {
           const isOccluded = this.isHardFogOccludedRow(y);
-          this.drawBlock(px, py, color, isOccluded ? 0.95 : 1, !isOccluded);
+          this.drawBlock(px, py, color, isOccluded ? fogOccludedAlpha : 1, !isOccluded);
         }
       }
     }
 
     // Draw ghost piece
-    if (this.currentPiece && !this.gameOver) {
+    if (this.currentPiece && !this.gameOver && ghostVisible) {
       const ghostPos = this.getGhostPosition();
       if (ghostPos && ghostPos.y > this.currentPiece.position.y) {
         const { shape, colors } = this.currentPiece;
@@ -673,7 +996,14 @@ export class GameScene extends Phaser.Scene {
             if (shape[y][x] && !this.isHardFogOccludedRow(ghostPos.y + y)) {
               const px = Math.floor(boardOffsetX + (ghostPos.x + x) * BLOCK_SIZE);
               const py = Math.floor(boardOffsetY + (ghostPos.y + y) * BLOCK_SIZE);
-              this.drawBlock(px, py, colors[y][x], 0.2); // Semi-transparent
+              let ghostColor = colors[y][x]
+              if (amnesiaPieceDesaturation > 0) {
+                ghostColor = this.blendColorToGray(ghostColor, amnesiaPieceDesaturation)
+              }
+              if (this.fogRank > 0) {
+                ghostColor = this.desaturateColorByFogRank(ghostColor)
+              }
+              this.drawBlock(px, py, ghostColor, ghostAlpha); // Semi-transparent
             }
           }
         }
@@ -688,13 +1018,16 @@ export class GameScene extends Phaser.Scene {
           if (shape[y][x]) {
             const row = position.y + y;
             let pieceColor = colors[y][x];
+            if (amnesiaPieceDesaturation > 0) {
+              pieceColor = this.blendColorToGray(pieceColor, amnesiaPieceDesaturation)
+            }
             if (this.fogRank > 0) {
               pieceColor = this.desaturateColorByFogRank(pieceColor);
             }
             const occluded = this.isHardFogOccludedRow(row);
             const px = Math.floor(boardOffsetX + (position.x + x) * BLOCK_SIZE);
             const py = Math.floor(boardOffsetY + (position.y + y) * BLOCK_SIZE);
-            this.drawBlock(px, py, pieceColor, occluded ? 0.95 : 1, !occluded);
+            this.drawBlock(px, py, pieceColor, occluded ? fogOccludedAlpha : 1, !occluded);
           }
         }
       }
@@ -702,7 +1035,7 @@ export class GameScene extends Phaser.Scene {
 
     // Draw next piece preview — positioned directly under the NEXT label
     // HUD starts at y=112. Rows: LEVEL(60) + SCORE(60) + TIME(60) + SPEED(60) + NEXT_label(20) = 372 → preview at ~392
-    if (this.nextPiece) {
+    if (this.nextPiece && !hideNextPreview) {
       const { shape, colors } = this.nextPiece;
       const nextX = 416;
       const nextY = 392;
@@ -711,7 +1044,11 @@ export class GameScene extends Phaser.Scene {
           if (shape[y][x]) {
             const px = Math.floor(nextX + x * BLOCK_SIZE);
             const py = Math.floor(nextY + y * BLOCK_SIZE);
-            this.drawBlock(px, py, colors[y][x]);
+            let previewColor = colors[y][x]
+            if (amnesiaPieceDesaturation > 0) {
+              previewColor = this.blendColorToGray(previewColor, amnesiaPieceDesaturation)
+            }
+            this.drawBlock(px, py, previewColor);
           }
         }
       }
@@ -719,7 +1056,7 @@ export class GameScene extends Phaser.Scene {
 
     // Draw held piece preview — positioned directly under the HOLD label
     // HOLD label is ~145px below NEXT label → ~112 + 60*4 + 145 = 497 → preview at ~517
-    if (this.heldPiece) {
+    if (this.heldPiece && !hideHoldPreview) {
       const { shape, colors } = this.heldPiece;
       const holdX = 416;
       const holdY = 537;
@@ -728,7 +1065,11 @@ export class GameScene extends Phaser.Scene {
           if (shape[y][x]) {
             const px = Math.floor(holdX + x * BLOCK_SIZE);
             const py = Math.floor(holdY + y * BLOCK_SIZE);
-            this.drawBlock(px, py, colors[y][x]);
+            let holdColor = colors[y][x]
+            if (amnesiaPieceDesaturation > 0) {
+              holdColor = this.blendColorToGray(holdColor, amnesiaPieceDesaturation)
+            }
+            this.drawBlock(px, py, holdColor);
           }
         }
       }
@@ -755,6 +1096,9 @@ export class GameScene extends Phaser.Scene {
         .lineTo(boardOffsetX + BOARD_WIDTH * BLOCK_SIZE, boardOffsetY + y * BLOCK_SIZE)
         .stroke();
     }
+
+    // Draw themed line-clear sweep on top of board cells and grid.
+    this.renderThematicLineClearOverlay(boardOffsetX, boardOffsetY)
 
     // Draw floating score texts and impact messages
     this.renderFloatingTexts();
@@ -807,13 +1151,8 @@ export class GameScene extends Phaser.Scene {
         // Step 3: accumulate additive multiplier bonuses from active Vexes
         let colorMultBonus = 0;  // scales colour-cluster points
         let lineMultBonus = 0;  // scales line-count multiplier
-        const vexDetails: string[] = [];
         for (const vex of this.activeVexes) {
           const m = vex.getMultiplier(ctx, vex.rank);
-          // Record contribution for the HUD breakdown (skip zero contributions)
-          if (m !== 0) {
-            vexDetails.push(`${vex.name} (r${vex.rank}, ${vex.kind}): ${m >= 0 ? '+' : ''}${m.toFixed(2)}`);
-          }
           if (vex.kind === 'color') colorMultBonus += m;
           else if (vex.kind === 'line') lineMultBonus += m;
         }
@@ -824,8 +1163,12 @@ export class GameScene extends Phaser.Scene {
         // With no Vexes: colorMult=1, lineMult=1 → identical to old formula.
         const colorMult = 1 + colorMultBonus;
         const lineMult = 1 + lineMultBonus;
+        this.lastColorMult = colorMult
+        this.lastLineMult = lineMult
         const modifiedClusterPoints = totalClusterPoints * colorMult;
         const moveScore = Math.round(modifiedClusterPoints * (linesCleared * lineMult));
+
+        audioManager.playSfx('lineClear', { linesCleared })
 
         this.score += moveScore;
         this.currentLevelScore += moveScore;
@@ -904,9 +1247,9 @@ export class GameScene extends Phaser.Scene {
           }
           // Update other chips
           const chipMap = new Map(this.lastChips.map(c => [c.config.id, c]));
-          chipMap.get('cleared')?.text.setText(`×${linesCleared}`);
-          chipMap.get('color')?.text.setText(`${colorMult.toFixed(2)}`);
-          chipMap.get('lineMult')?.text.setText(`${lineMult.toFixed(2)}`);
+          chipMap.get('cleared')?.text.setText(`x${linesCleared}`);
+          chipMap.get('color')?.text.setText(this.formatMultiplierValue(colorMult));
+          chipMap.get('lineMult')?.text.setText(this.formatMultiplierValue(lineMult));
           chipMap.get('total')?.text.setText(`${calcResult}`);
 
           // Activate chip backgrounds
@@ -939,18 +1282,26 @@ export class GameScene extends Phaser.Scene {
           const midY = (this.clearingLines[0] + this.clearingLines[this.clearingLines.length - 1]) / 2;
           const py = 112 + midY * BLOCK_SIZE;
           const px = 48 + (BOARD_WIDTH * BLOCK_SIZE) / 2;
+          const clearThemeColor = this.getLineClearThemeColor(linesCleared)
+          const clearThemeHex = this.colorToHexString(clearThemeColor)
 
           let color = '#FFFFFF';
           let scale = 1.0;
           let shakeMag = 0;
 
           if (moveScore >= 1000) {
-            color = '#FFD700';
+            color = clearThemeHex;
             scale = 1.4;
             shakeMag = 0.005;
-            this.cameras.main.flash(100, 255, 255, 255, false); // Very subtle white flash
+            this.cameras.main.flash(
+              120,
+              (clearThemeColor >> 16) & 0xff,
+              (clearThemeColor >> 8) & 0xff,
+              clearThemeColor & 0xff,
+              false,
+            );
           } else if (moveScore >= 500) {
-            color = '#FFD700'; // Gold for good scores
+            color = clearThemeHex;
             scale = 1.2;
             shakeMag = 0.003;
           } else if (moveScore >= 200) {
@@ -965,6 +1316,12 @@ export class GameScene extends Phaser.Scene {
           }
 
           this.showFloatingText(px, py, displayText, color, scale);
+
+          const callout = this.getLineClearCallout(linesCleared)
+          if (callout) {
+            const mutedCalloutColor = this.colorToHexString(this.blendColors(clearThemeColor, 0xd6dce3, 0.72))
+            this.showFloatingText(px, py - 22, callout, mutedCalloutColor, 0.9)
+          }
 
           if (shakeMag > 0) {
             this.cameras.main.shake(150, shakeMag);
@@ -1014,7 +1371,9 @@ export class GameScene extends Phaser.Scene {
 
     // Gravity
     const isSoftDrop = this.downKey.isDown;
-    const currentDelay = isSoftDrop ? 1 : this.gravityDelay;
+    const quicksandRank = this.getActiveVexRank('quicksand')
+    const quicksandScale = this.getQuicksandGravityScale(quicksandRank)
+    const currentDelay = isSoftDrop ? 1 : Math.max(1, this.gravityDelay * quicksandScale);
     this.gravityTimer += delta;
 
     if (this.gravityTimer >= currentDelay * 16.67) {
@@ -1056,6 +1415,7 @@ export class GameScene extends Phaser.Scene {
         this.gameOver = true;
         this.gameOverBg.setVisible(true);
         this.gameOverText.setVisible(true);
+        audioManager.playSfx('fail')
       }
     }
 
@@ -1082,6 +1442,20 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Update HUD with dirty tracking - only setText() if value changed
+        // Always show color/line mult on scoreline (even if not just scored)
+        if (this.lastChips) {
+          const chipMap = new Map(this.lastChips.map(c => [c.config.id, c]));
+          const colorChip = chipMap.get('color')
+          if (colorChip) {
+            colorChip.text.setText(this.formatMultiplierValue(this.lastColorMult))
+            colorChip.label.setVisible(false)
+          }
+          const lineChip = chipMap.get('lineMult')
+          if (lineChip) {
+            lineChip.text.setText(this.formatMultiplierValue(this.lastLineMult))
+            lineChip.label.setVisible(false)
+          }
+        }
     if (this.lastHudLevel !== this.currentLevel) {
       this.lastHudLevel = this.currentLevel;
       this.hudLevelText.setText(`${this.currentLevel}`);
@@ -1102,6 +1476,12 @@ export class GameScene extends Phaser.Scene {
       this.hudSpeedText.setText(`${this.level}`);
     }
 
+    this.updateVexAmbienceAudio(time)
+
+    const amnesiaRank = this.getAmnesiaRank()
+    this.hudNextLabelText.setVisible(amnesiaRank < 1)
+    this.hudHoldLabelText.setVisible(amnesiaRank < 2)
+
     // Update Balatro-style Vex bar across the top
     updateVexBar(this.activeVexes)
 
@@ -1113,7 +1493,7 @@ export class GameScene extends Phaser.Scene {
       if (targetFogHeight >= this.fogHeightPx) {
         this.fogHeightPx = targetFogHeight
       } else {
-        const retreatSpeed = this.fogRank >= 9 ? 18 : this.fogRank >= 7 ? 24 : 40
+        const retreatSpeed = this.fogRank >= 9 ? 10 : this.fogRank >= 7 ? 16 : 26
         const retreatStep = (retreatSpeed * delta) / 1000
         this.fogHeightPx = Math.max(targetFogHeight, this.fogHeightPx - retreatStep)
       }
@@ -1129,7 +1509,9 @@ export class GameScene extends Phaser.Scene {
       if (age > 5000) {
         if (this.lastChips) {
           for (const chip of this.lastChips) {
-            chip.text.setText('');
+            if (chip.config.id !== 'color' && chip.config.id !== 'lineMult') {
+              chip.text.setText('');
+            }
             if (chip.config.id === 'total') {
               chip.bg.setFillStyle(0x102314, 0.95);
               chip.label.setColor('#CFFFD3');
@@ -1140,6 +1522,13 @@ export class GameScene extends Phaser.Scene {
               chip.label.setVisible(true);
               // Hide clusterTexts when idle
               if (chip.clusterTexts) for (const t of chip.clusterTexts) t.setVisible(false);
+            } else if (chip.config.id === 'color' || chip.config.id === 'lineMult') {
+              chip.bg.setFillStyle(0x141414, 0.9);
+              chip.text.setColor('#FFFFFF');
+              const multValue = chip.config.id === 'color' ? this.lastColorMult : this.lastLineMult
+              chip.text.setText(this.formatMultiplierValue(multValue));
+              chip.label.setColor('#D2D2D2');
+              chip.label.setVisible(false);
             } else {
               chip.bg.setFillStyle(0x141414, 0.9);
               chip.label.setColor('#D2D2D2');
@@ -1162,6 +1551,7 @@ export class GameScene extends Phaser.Scene {
    */
   private onLevelComplete(): void {
     this.shopping = true
+    audioManager.playSfx('levelClear')
 
     // Visual flash before the overlay
     const boardCenterX = 48 + (BOARD_WIDTH * BLOCK_SIZE) / 2
@@ -1214,6 +1604,7 @@ export class GameScene extends Phaser.Scene {
     this.gameOverText.setText('RESOLVE DEPLETED!')
     this.gameOverText.setStyle({ color: '#FF6347' })
     this.gameOverText.setVisible(true)
+    audioManager.playSfx('fail')
   }
 
   private createParticles(x: number, y: number, count: number, color: number) {
@@ -1341,6 +1732,7 @@ export class GameScene extends Phaser.Scene {
 
     // 3. Trigger visual effect
     this.playRisingDirtEffect();
+    audioManager.playSfx('risingImpact')
 
     // 4. Check for top-out (if blocks exceed top of board, game over)
     for (let x = 0; x < BOARD_WIDTH; x++) {
@@ -1351,6 +1743,7 @@ export class GameScene extends Phaser.Scene {
         this.gameOverText.setText('GARBAGE OVERFLOW!');
         this.gameOverText.setStyle({ color: '#FF6347' });
         this.gameOverText.setVisible(true);
+        audioManager.playSfx('fail')
         break;
       }
     }
@@ -1404,6 +1797,7 @@ export class GameScene extends Phaser.Scene {
    * Briefly highlights the bottom border of the board.
    */
   private showRisingWarning(): void {
+    audioManager.playSfx('risingWarn')
     const boardElement = document.querySelector('.board, #board, [data-board]') as HTMLElement;
     if (!boardElement) return;
 
@@ -1463,11 +1857,28 @@ export class GameScene extends Phaser.Scene {
    * Called at the start of each level after activeVexes is populated.
    */
   private setupVexEffects(): void {
+    const activeIds = new Set(this.activeVexes.map(vex => vex.id))
+
+    if (!activeIds.has('blackout')) {
+      disableBlackout()
+    }
+    if (!activeIds.has('fog')) {
+      disableFog()
+      this.fogRank = 0
+      this.fogHeightPx = 0
+      setFogHeight(0)
+    }
+
     for (const vex of this.activeVexes) {
+      if (vex.id === 'blackout' || vex.id === 'fog') {
+        vex.onApply?.(vex.rank)
+      }
       if (vex.id === 'rising_dread') {
         this.startRisingDreadTimer(vex.rank);
       }
-      // Add more Vex effects here as needed
+      if (vex.id === 'corruption') {
+        this.startCorruptionTimer(vex.rank)
+      }
     }
   }
 
@@ -1479,6 +1890,13 @@ export class GameScene extends Phaser.Scene {
    * rather than being hard-coded here.
    */
   private initRun(): void {
+    disableBlackout()
+    disableFog()
+    setFogHeight(0)
+    this.lastFogPulseAtMs = 0
+    this.lastBlackoutPulseAtMs = 0
+    this.lastGhostVisible = true
+
     // Level progression
     this.currentLevel = 1
     this.currentLevelParams = getLevelParams(1)
@@ -1496,14 +1914,17 @@ export class GameScene extends Phaser.Scene {
   }
   private getMinimumFogRows(fogRank: number): number {
     const clampedRank = Math.max(0, Math.min(10, Math.floor(fogRank)))
-    const rowsByRank = [0, 0, 0.5, 1, 1.75, 2.5, 3.1, 4.1, 5.4, 6.7, 8]
+    const rowsByRank = [0, 0.6, 1.2, 1.9, 2.8, 3.8, 5.0, 6.3, 7.7, 9.2, 10.8]
     return rowsByRank[clampedRank]
   }
 
   private isHardFogOccludedRow(row: number): boolean {
-    if (this.fogRank < 9 || this.fogHeightPx <= 0) return false
+    if (this.fogRank < 5 || this.fogHeightPx <= 0) return false
+    const factor = this.getFogHardOcclusionFactor(this.fogRank)
+    if (factor <= 0) return false
+    const hardOcclusionHeight = this.fogHeightPx * factor
     const rowMidpoint = row * BLOCK_SIZE + BLOCK_SIZE / 2
-    return rowMidpoint >= (BOARD_HEIGHT * BLOCK_SIZE - this.fogHeightPx)
+    return rowMidpoint >= (BOARD_HEIGHT * BLOCK_SIZE - hardOcclusionHeight)
   }
 
   private desaturateColorByFogRank(color: number): number {
@@ -1518,9 +1939,9 @@ export class GameScene extends Phaser.Scene {
       this.prevFogRank = this.fogRank
     }
 
-    // Gradually fade colors to grayscale from rank 1 to 10
-    // Rank 1-3: mostly colored, Rank 4-6: increasingly gray, Rank 7-10: mostly grayscale
-    let desaturation = Math.max(0, Math.min(1, (this.fogRank - 2) / 8)) // 0 at rank ≤2, 1 at rank ≥10
+    // Stronger rank curve: mild at low ranks, severe by rank 8+.
+    const desaturationByRank = [0, 0.08, 0.15, 0.24, 0.34, 0.47, 0.6, 0.73, 0.84, 0.93, 1]
+    let desaturation = desaturationByRank[Math.max(0, Math.min(10, this.fogRank))]
     
     const r = (color >> 16) & 0xFF
     const g = (color >> 8) & 0xFF
@@ -1562,10 +1983,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     columnHeights.sort((left, right) => right - left)
-    const pressureColumns = Math.max(1, Math.ceil(columnHeights.length * 0.35))
+    const pressureColumns = Math.max(1, Math.ceil(columnHeights.length * 0.45))
     const pressureSurface = columnHeights.slice(0, pressureColumns)
       .reduce((sum, height) => sum + height, 0) / pressureColumns
-    const paddingRows = 1 + Math.min(1.1, Math.max(0, fogRank - 1) * 0.12)
+    const paddingRows = 1.2 + Math.min(1.8, Math.max(0, fogRank - 1) * 0.2)
     const targetRows = Math.min(BOARD_HEIGHT, Math.max(minimumRows, pressureSurface + paddingRows))
 
     return targetRows * BLOCK_SIZE

@@ -122,16 +122,16 @@ export interface LevelParams {
 
 /** Level data for levels 1–10, clamped above 10. */
 const LEVEL_TABLE: LevelParams[] = [
-  { level: 1, targetScore: 800, resolveMax: 120 },
-  { level: 2, targetScore: 1400, resolveMax: 135 },
-  { level: 3, targetScore: 2000, resolveMax: 150 },
-  { level: 4, targetScore: 2600, resolveMax: 165 },
-  { level: 5, targetScore: 3200, resolveMax: 180 },
-  { level: 6, targetScore: 3800, resolveMax: 195 },
-  { level: 7, targetScore: 4400, resolveMax: 210 },
-  { level: 8, targetScore: 5000, resolveMax: 225 },
-  { level: 9, targetScore: 5600, resolveMax: 240 },
-  { level: 10, targetScore: 6200, resolveMax: 255 },
+  { level: 1, targetScore: 800, resolveMax: 150 },
+  { level: 2, targetScore: 1000, resolveMax: 170 },
+  { level: 3, targetScore: 1300, resolveMax: 185 },
+  { level: 4, targetScore: 1800, resolveMax: 195 },
+  { level: 5, targetScore: 3000, resolveMax: 205 },
+  { level: 6, targetScore: 6075, resolveMax: 195 },
+  { level: 7, targetScore: 9110, resolveMax: 210 },
+  { level: 8, targetScore: 13665, resolveMax: 225 },
+  { level: 9, targetScore: 20497, resolveMax: 240 },
+  { level: 10, targetScore: 30746, resolveMax: 255 },
 ]
 
 /**

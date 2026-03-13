@@ -19,7 +19,7 @@ const BAR_TOP = 8
 const BAR_LEFT = 48   // board left edge
 const BAR_WIDTH = 320  // board width (320px = 10 blocks × 32px)
 
-const RANK_NUMERAL = ['', 'I', 'II', 'III']
+const RANK_NUMERAL = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
 
 const BAR_CSS = `
 /* ── Vex card bar ─────────────────────────────────────────────────── */
@@ -157,19 +157,23 @@ export function updateVexBar(activeVexes: Vex[]): void {
     const bar = getOrCreateBar()
 
     bar.innerHTML = activeVexes.map(vex => {
-        const kindClass = vex.kind === 'color' ? 'color-vex' : 'line-vex'
-        const kindLabel = vex.kind === 'color' ? 'COLOUR' : 'LINE'
-        const shortName = vex.name.replace('Vex of ', '')
-        const rank = RANK_NUMERAL[vex.rank] ?? ''
-
+        const kindClass = vex.kind === 'color' ? 'color-vex' : 'line-vex';
+        const kindLabel = vex.kind === 'color' ? 'COLOUR' : 'LINE';
+        const shortName = vex.name.replace('Vex of ', '');
+        let rankDisplay = '';
+        if (vex.rank <= 3) {
+            rankDisplay = RANK_NUMERAL[vex.rank] ?? '';
+        } else {
+            rankDisplay = vex.rank.toString();
+        }
         return `
       <div class="vex-card ${kindClass}">
         <span class="vex-card-kind">${kindLabel}</span>
         <span class="vex-card-name">${shortName}</span>
-        <span class="vex-card-rank">${rank}</span>
+        <span class="vex-card-rank">${rankDisplay}</span>
       </div>
-    `
-    }).join('')
+    `;
+    }).join('');
 }
 
 export function removeVexBar(): void {

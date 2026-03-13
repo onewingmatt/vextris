@@ -39,16 +39,16 @@ type BlackoutConfig = {
 
 /** Per-rank parameters matching vision.md spec. */
 const RANK_CONFIG: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, BlackoutConfig> = {
-    1: { peakOpacity: 0.35, flashOpacity: 0.06, flashMs: 45, flashGapMs: 35, holdMs: 250, intervalMs: 21_000, fadeMs: 220 },
-    2: { peakOpacity: 0.42, flashOpacity: 0.07, flashMs: 45, flashGapMs: 35, holdMs: 270, intervalMs: 18_500, fadeMs: 210 },
-    3: { peakOpacity: 0.50, flashOpacity: 0.08, flashMs: 50, flashGapMs: 35, holdMs: 300, intervalMs: 16_000, fadeMs: 200 },
-    4: { peakOpacity: 0.59, flashOpacity: 0.09, flashMs: 50, flashGapMs: 40, holdMs: 325, intervalMs: 13_800, fadeMs: 190 },
-    5: { peakOpacity: 0.68, flashOpacity: 0.10, flashMs: 55, flashGapMs: 40, holdMs: 350, intervalMs: 11_800, fadeMs: 180 },
-    6: { peakOpacity: 0.77, flashOpacity: 0.11, flashMs: 55, flashGapMs: 45, holdMs: 380, intervalMs: 10_000, fadeMs: 170 },
-    7: { peakOpacity: 0.85, flashOpacity: 0.12, flashMs: 60, flashGapMs: 45, holdMs: 420, intervalMs: 8_300, fadeMs: 160 },
-    8: { peakOpacity: 0.92, flashOpacity: 0.14, flashMs: 60, flashGapMs: 50, holdMs: 460, intervalMs: 6_800, fadeMs: 150 },
-    9: { peakOpacity: 0.97, flashOpacity: 0.16, flashMs: 65, flashGapMs: 55, holdMs: 500, intervalMs: 5_400, fadeMs: 140 },
-    10: { peakOpacity: 1.00, flashOpacity: 0.18, flashMs: 70, flashGapMs: 60, holdMs: 560, intervalMs: 4_200, fadeMs: 130 },
+    1: { peakOpacity: 0.42, flashOpacity: 0.08, flashMs: 50, flashGapMs: 35, holdMs: 420, intervalMs: 15_000, fadeMs: 220 },
+    2: { peakOpacity: 0.50, flashOpacity: 0.09, flashMs: 52, flashGapMs: 36, holdMs: 500, intervalMs: 13_000, fadeMs: 210 },
+    3: { peakOpacity: 0.58, flashOpacity: 0.10, flashMs: 54, flashGapMs: 38, holdMs: 560, intervalMs: 11_000, fadeMs: 200 },
+    4: { peakOpacity: 0.66, flashOpacity: 0.12, flashMs: 56, flashGapMs: 40, holdMs: 620, intervalMs: 9_300, fadeMs: 190 },
+    5: { peakOpacity: 0.74, flashOpacity: 0.13, flashMs: 58, flashGapMs: 42, holdMs: 700, intervalMs: 7_800, fadeMs: 180 },
+    6: { peakOpacity: 0.82, flashOpacity: 0.15, flashMs: 60, flashGapMs: 44, holdMs: 760, intervalMs: 6_500, fadeMs: 170 },
+    7: { peakOpacity: 0.90, flashOpacity: 0.16, flashMs: 62, flashGapMs: 48, holdMs: 840, intervalMs: 5_200, fadeMs: 160 },
+    8: { peakOpacity: 0.96, flashOpacity: 0.18, flashMs: 64, flashGapMs: 52, holdMs: 920, intervalMs: 4_000, fadeMs: 150 },
+    9: { peakOpacity: 1.00, flashOpacity: 0.20, flashMs: 68, flashGapMs: 56, holdMs: 1_050, intervalMs: 3_000, fadeMs: 138 },
+    10: { peakOpacity: 1.00, flashOpacity: 0.23, flashMs: 72, flashGapMs: 60, holdMs: 1_250, intervalMs: 2_200, fadeMs: 124 },
 }
 
 // ---------------------------------------------------------------------------
@@ -209,11 +209,12 @@ export function enableBlackout(rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): vo
     // Set a placeholder so scheduleNextCycle's cancelled check works
     cycleTimer = null
 
-    // Kick off after one full interval so it doesn't fire immediately on apply
+    // Start sooner than a full cycle so the curse is felt quickly.
+    const firstDelayMs = Math.max(900, Math.floor(cfg.intervalMs * 0.45))
     cycleTimer = setTimeout(() => {
         cycleTimer = null
         runCycle(cfg)
-    }, cfg.intervalMs)
+    }, firstDelayMs)
 }
 
 /**

@@ -2,7 +2,7 @@
  * vex.ts — Vex (curse) system for Vextris.
  *
  * Each Vex is always-active once taken, applies a visual/gameplay downside,
- * and provides a scoring multiplier as a reward. Ranks 1–3 scale both.
+ * and provides a scoring multiplier as a reward. Ranks 1-10 scale both.
  *
  * Scoring is split into two multiplier buckets:
  *   "color" — scales totalClusterPoints (color-cluster scoring)
@@ -55,7 +55,7 @@ export type Vex = {
     id: string
     name: string
     kind: VexKind
-    rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
+    rank: VexRank
     description: string
     downsideDescription: string
 
@@ -89,17 +89,23 @@ export type Vex = {
  * Rising Dread garbage row parameters based on Vex rank.
  * Higher rank = faster interval, fewer gaps.
  */
+/**
+ * Vexes can now be leveled up to rank 10 (stacking, Vampire Survivors style).
+ * If you want to allow even higher stacking, extend this type and logic.
+ */
 export type VexRank = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
-
-export function getRisingDreadParams(rank: VexRank) {
-    // Interval scales from 30s (rank 1) down to 10s (rank 10)
-    const intervalSeconds = Math.max(30 - 2 * (rank - 1), 10);
-    // Gaps scale from 3 (rank 1-3) down to 1 (rank 7-10)
-    const gapsPerRow = Math.max(3 - Math.floor((rank - 1) / 3), 1);
-    return { intervalSeconds, gapsPerRow };
+/**
+ * Upgrades a Vex to a new rank in-place and fires onRankChange.
+ * Safe to call even if old rank === new rank.
+ * If newRank > 10, clamps to 10 (raise VexRank type if you want higher stacking).
+ */
+export function upgradeVex(vex: Vex, newRank: VexRank) {
+    const clampedRank = Math.min(newRank, 10) as VexRank;
+    if (vex.rank === clampedRank) return;
+    const oldRank = vex.rank;
+    vex.rank = clampedRank;
+    vex.onRankChange?.(oldRank, clampedRank);
 }
-
-// (rankStep is available for future getMultiplier implementations that need
 // interpolated values rather than lookup tables.)
 // const rankStep = (rank: 1 | 2 | 3, base: number, step: number) =>
 //   base + step * (rank - 1)
@@ -203,15 +209,11 @@ export const createVexCorruption = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
     },
 
     onApply(_r) {
-        // TODO (GameScene): every N seconds pick K random filled board cells and
-        // recolour them to a random BLOCK_COLOR (from config).
-        //   rank 1 → K=1, every 8s
-        //   rank 2 → K=2, every 5s
-        //   rank 3 → K=4, every 3s
+        // GameScene wires a recurring corruption timer based on rank.
     },
 
     onRankChange(_oldRank, _newRank) {
-        // TODO (GameScene): adjust K and the timer interval.
+        // GameScene reconfigures corruption cadence/strength from rank.
     },
 })
 
@@ -241,15 +243,11 @@ export const createVexQuicksand = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10)
     },
 
     onApply(_r) {
-        // TODO (GameScene): override gravityDelay with a faster value.
-        //   rank 1: gravityDelay * 0.75
-        //   rank 2: gravityDelay * 0.50
-        //   rank 3: gravityDelay * 0.30
-        // Store the original so it can be restored on rank change.
+        // GameScene applies quicksand gravity scaling each frame.
     },
 
     onRankChange(_oldRank, _newRank) {
-        // TODO (GameScene): update the gravity multiplier to match newRank.
+        // GameScene uses current rank to update gravity scaling in real time.
     },
 })
 
@@ -275,13 +273,11 @@ export const createVexAmnesia = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): 
     },
 
     onApply(_r) {
-        // TODO (GameScene): hide NEXT preview UI at all ranks.
-        //   rank 2+: also hide HOLD UI.
-        //   rank 3:  render all current-piece blocks as a single grey colour.
+        // GameScene applies amnesia visibility/colour penalties while rendering.
     },
 
     onRankChange(_oldRank, _newRank) {
-        // TODO (GameScene): extend or reduce hidden UI based on newRank.
+        // GameScene reads rank each frame to update amnesia penalties.
     },
 })
 
@@ -342,13 +338,4 @@ export const STARTER_VEX_FACTORIES = {
 
 export type VexId = keyof typeof STARTER_VEX_FACTORIES
 
-/**
- * Upgrades a Vex to a new rank in-place and fires onRankChange.
- * Safe to call even if old rank === new rank.
- */
-export function upgradeVex(vex: Vex, newRank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
-    if (vex.rank === newRank) return
-    const oldRank = vex.rank
-    vex.rank = newRank
-    vex.onRankChange?.(oldRank, newRank)
-}
+

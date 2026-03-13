@@ -4,22 +4,33 @@
  * Renders 3 card choices as an HTML/CSS overlay on top of the Phaser canvas.
  * Cards are either:
  *   - A new Vex at rank 1 (if the player doesn't already own it), or
- *   - A rank-up offer for an Vex the player already owns (max rank 3).
+ *   - A rank-up offer for a Vex the player already owns (max rank 10).
  *
- * Rules (from vision.md):
- *   - If activeVexes.length < 2  → only offer new rank-1 Vexes.
- *   - If activeVexes.length >= 2 → allow rank-ups.
- *   - Never offer a rank-up to an already rank-3 Vex.
- *   - Show exactly 3 cards. If there aren't enough valid options, pad with
- *     whatever is available (the pool always has at least 6 distinct Vexes).
+ * Rules:
+ *   - Offer pool includes both new Vexes and rank-ups each shop.
+ *   - Never offer rank-ups for rank-10 Vexes.
+ *   - Prefer at least one new Vex when any remain.
+ *   - Show up to 3 cards from available candidates.
  */
 
 import { Vex, STARTER_VEX_FACTORIES, VexId, upgradeVex } from './vex'
+import { audioManager } from './audio'
 
 /** A single item the shop can offer. */
+import type { VexRank } from './vex'
 type ShopOffer =
-    | { type: 'new'; vexId: VexId }
-    | { type: 'rankup'; vex: Vex; fromRank: 1 | 2 | 3; toRank: 2 | 3 }
+  | { type: 'new'; vexId: VexId }
+  | { type: 'rankup'; vex: Vex; fromRank: VexRank; toRank: VexRank }
+
+const QUICKSAND_PRIORITY_CHANCE = 0.9
+
+function clampVexRank(rank: number): VexRank {
+  return Math.max(1, Math.min(10, Math.floor(rank))) as VexRank
+}
+
+function isQuicksandOffer(offer: ShopOffer): boolean {
+  return offer.type === 'new' ? offer.vexId === 'quicksand' : offer.vex.id === 'quicksand'
+}
 
 // ---------------------------------------------------------------------------
 // CSS – injected once into the document <head>
@@ -210,6 +221,7 @@ export function showVexShop(
     onPick: (activeVexes: Vex[]) => void,
 ): void {
     injectCSS()
+  audioManager.playSfx('shopOpen')
 
     const offers = buildOffers(activeVexes)
 
@@ -231,6 +243,7 @@ export function showVexShop(
         el.addEventListener('click', () => {
             const offer = offers[idx]
         if (!offer) return
+          audioManager.playSfx('uiClick')
             applyOffer(offer, activeVexes)
             overlay.remove()
             onPick(activeVexes)
@@ -251,41 +264,40 @@ function buildOffers(activeVexes: Vex[]): ShopOffer[] {
         .filter((id) => !ownedIds.has(id))
         .map((vexId) => ({ type: 'new', vexId }))
 
-    // --- Rank-up pool: owned Vexes not yet at rank 3 ---
+    // --- Rank-up pool: owned Vexes not yet at rank 10 ---
     const rankupPool: ShopOffer[] = activeVexes
-        .filter((v) => v.rank < 3)
-        .map((vex) => ({
-            type: 'rankup' as const,
-            vex,
-            fromRank: vex.rank as 1 | 2 | 3,
-            toRank: (vex.rank + 1) as 2 | 3,
-        }))
+      .filter((v) => v.rank < 10)
+      .map((vex) => ({
+        type: 'rankup' as const,
+        vex,
+        fromRank: vex.rank,
+        toRank: clampVexRank(vex.rank + 1),
+      }))
 
-    // --- Per vision.md: if player has < 2 Vexes, only offer new ones ---
-    const allowRankups = activeVexes.length >= 2
+    const candidates: ShopOffer[] = shuffle([...newVexPool, ...rankupPool]);
+    const chosen: ShopOffer[] = []
 
-    let candidates: ShopOffer[] = allowRankups
-        ? shuffle([...newVexPool, ...rankupPool])
-        : shuffle([...newVexPool])
-
-    // Guarantee at least one new Vex if possible (don't show all rank-ups)
-    if (allowRankups && newVexPool.length > 0) {
-        const hasNew = candidates.slice(0, 3).some((o) => o.type === 'new')
-        if (!hasNew) {
-            const newOffer = shuffle([...newVexPool])[0]
-            candidates = [newOffer, ...candidates.filter((o) => o !== newOffer)]
-        }
+    // Quicksand should be available in most shops when it is eligible.
+    const quicksandOffer = candidates.find(isQuicksandOffer)
+    if (quicksandOffer && Math.random() < QUICKSAND_PRIORITY_CHANCE) {
+      chosen.push(quicksandOffer)
     }
 
-    // Take up to 3; pad with new-vex pool if short
-    const chosen = candidates.slice(0, 3)
-    while (chosen.length < 3 && newVexPool.length > 0) {
-        const extra = newVexPool.find((n) => !chosen.includes(n))
-        if (!extra) break
-        chosen.push(extra)
+    // Guarantee at least one new Vex if possible (don't show all rank-ups).
+    if (newVexPool.length > 0 && !chosen.some((offer) => offer.type === 'new')) {
+      const availableNewOffers = newVexPool.filter((offer) => !chosen.includes(offer))
+      if (availableNewOffers.length > 0) {
+        chosen.push(shuffle([...availableNewOffers])[0])
+      }
     }
 
-    return chosen
+    const remaining = shuffle(candidates.filter((offer) => !chosen.includes(offer)))
+    for (const offer of remaining) {
+      if (chosen.length >= 3) break
+      chosen.push(offer)
+    }
+
+    return chosen.slice(0, 3)
 }
 
 // ---------------------------------------------------------------------------
@@ -294,51 +306,58 @@ function buildOffers(activeVexes: Vex[]): ShopOffer[] {
 
 function renderCard(offer: ShopOffer, idx: number): string {
     if (offer.type === 'new') {
-        const factory = STARTER_VEX_FACTORIES[offer.vexId]
-        const proto = factory(1) // rank-1 preview instance
-        const kindClass = proto.kind === 'color' ? 'color-vex' : 'line-vex'
-        const kindLabel = proto.kind === 'color' ? 'COLOUR VEX' : 'LINE VEX'
-        const mult = proto.getMultiplier({ linesCleared: 1, clusters: [], totalClusterPoints: 1, maxClusterSize: 0, colorsInMove: new Set(), moveIndex: 0, combo: 0, timeRemaining: 999, currentLevel: 1 }, 1)
+        const factory = STARTER_VEX_FACTORIES[offer.vexId];
+        const proto = factory(1); // rank-1 preview instance
+        const kindClass = proto.kind === 'color' ? 'color-vex' : 'line-vex';
+        const kindLabel = proto.kind === 'color' ? 'COLOUR VEX' : 'LINE VEX';
+        const mult = proto.getMultiplier({ linesCleared: 1, clusters: [], totalClusterPoints: 1, maxClusterSize: 0, colorsInMove: new Set(), moveIndex: 0, combo: 0, timeRemaining: 999, currentLevel: 1 }, 1);
 
         return `
       <button type="button" class="card ${kindClass}" data-offer-idx="${idx}">
         <span class="card-label">${kindLabel}</span>
         <div class="card-name">${proto.name}</div>
-        <div class="card-rank"><span class="new-rank">NEW — RANK I</span></div>
+        <div class="card-rank"><span class="new-rank">NEW - RANK 1</span></div>
         <div class="card-desc">${proto.description}</div>
         <div class="card-downside">⚠ ${proto.downsideDescription}</div>
         <div class="card-mult">+${(mult * 100).toFixed(0)}% mult</div>
       </button>
-    `
-    } else {
-        // rank-up
-        const { vex, fromRank, toRank } = offer
-        const kindClass = vex.kind === 'color' ? 'color-vex' : 'line-vex'
-        const kindLabel = vex.kind === 'color' ? 'COLOUR VEX' : 'LINE VEX'
-        const rankNumeral = (r: number) => ['I', 'II', 'III'][r - 1]
+    `;
+    }
 
-        // Multiplier delta: toRank minus fromRank
-        const dummyCtx = { linesCleared: 1, clusters: [], totalClusterPoints: 1, maxClusterSize: 0, colorsInMove: new Set<number>(), moveIndex: 0, combo: 0, timeRemaining: 999, currentLevel: 1 }
-        const multBefore = vex.getMultiplier(dummyCtx, fromRank)
-        const multAfter = vex.getMultiplier(dummyCtx, toRank)
-        const multDelta = multAfter - multBefore
+    const { vex, fromRank, toRank } = offer
+    const kindClass = vex.kind === 'color' ? 'color-vex' : 'line-vex'
+    const kindLabel = vex.kind === 'color' ? 'COLOUR VEX' : 'LINE VEX'
 
-        return `
+    const dummyCtx = {
+      linesCleared: 1,
+      clusters: [],
+      totalClusterPoints: 1,
+      maxClusterSize: 0,
+      colorsInMove: new Set<number>(),
+      moveIndex: 0,
+      combo: 0,
+      timeRemaining: 999,
+      currentLevel: 1,
+    }
+    const multBefore = vex.getMultiplier(dummyCtx, fromRank)
+    const multAfter = vex.getMultiplier(dummyCtx, toRank)
+    const multDelta = Math.max(0, multAfter - multBefore)
+
+    return `
       <button type="button" class="card ${kindClass}" data-offer-idx="${idx}">
-        <span class="card-label rankup-badge">⬆ RANK UP</span>
+        <span class="card-label rankup-badge">RANK UP</span>
         <span class="card-label card-label-secondary">${kindLabel}</span>
         <div class="card-name">${vex.name}</div>
         <div class="card-rank">
-          <span style="color:#888">${rankNumeral(fromRank)}</span>
-          <span style="color:#fff"> → </span>
-          <span class="up-rank">${rankNumeral(toRank)}</span>
+          <span style="color:#888">RANK ${fromRank}</span>
+          <span style="color:#fff"> -> </span>
+          <span class="up-rank">RANK ${toRank}</span>
         </div>
         <div class="card-desc">${vex.description}</div>
         <div class="card-downside">⚠ ${vex.downsideDescription}</div>
         <div class="card-mult">+${(multDelta * 100).toFixed(0)}% more mult</div>
       </button>
     `
-    }
 }
 
 // ---------------------------------------------------------------------------
