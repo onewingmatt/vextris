@@ -139,6 +139,12 @@ const VEX_META: Record<VexId, { label: string; kind: 'color' | 'line' }> = {
   quicksand: { label: 'Quicksand', kind: 'line' },
   amnesia: { label: 'Amnesia', kind: 'line' },
   rising_dread: { label: 'Rising Dread', kind: 'line' },
+  lead_fingers: { label: 'Lead Fingers', kind: 'line' },
+  whiplash: { label: 'Whiplash', kind: 'line' },
+  tremor: { label: 'Tremor', kind: 'color' },
+  mirage: { label: 'Mirage', kind: 'color' },
+  jinxed: { label: 'Jinxed', kind: 'line' },
+  pressure: { label: 'Pressure', kind: 'color' },
 }
 
 export class DevPanel {

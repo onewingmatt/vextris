@@ -19,12 +19,24 @@ import {
   LevelParams,
   getLevelParams,
 } from '../config'
-import { Vex, ScoringContext, VexRank } from '../vex'
+import {
+  Vex,
+  ScoringContext,
+  VexRank,
+  getLeadFingersDASBonus,
+  getLeadFingersARRBonus,
+  getWhiplashDuration,
+  getMirageConfig,
+  getJinxedConfig,
+  getPressureTimeLimit,
+} from '../vex'
 import { showVexShop } from '../shop'
 import { DevPanel } from '../devPanel'
 import { updateVexBar } from '../vexBar'
 import { disableBlackout } from '../effects/blackout'
 import { setFogHeight, disableFog } from '../effects/fog'
+import { enableTremor, disableTremor } from '../effects/tremor'
+import { enableWhiplash, disableWhiplash, triggerWhiplash } from '../effects/whiplash'
 import { audioManager } from '../audio'
 import { ensureSoundControls } from '../soundControls'
 
@@ -130,6 +142,10 @@ export class GameScene extends Phaser.Scene {
   private lastFogPulseAtMs = 0
   private lastBlackoutPulseAtMs = 0
   private lastGhostVisible = true
+  private mirageActive = false
+  private mirageColOffset = 0
+  private pressureCountdown: number | null = null
+  private corruptionPulseTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor() {
     super({ key: 'GameScene' })
@@ -237,6 +253,130 @@ export class GameScene extends Phaser.Scene {
     return values[Math.max(0, Math.min(10, rank))]
   }
 
+  private rotatePieceDataClockwise(shape: number[][], colors: number[][]): { shape: number[][]; colors: number[][] } {
+    const rows = shape.length
+    const cols = shape[0].length
+    const rotatedShape = Array.from({ length: cols }, () => Array(rows).fill(0))
+    const rotatedColors = Array.from({ length: cols }, () => Array(rows).fill(0))
+
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        rotatedShape[x][rows - 1 - y] = shape[y][x]
+        rotatedColors[x][rows - 1 - y] = colors[y][x]
+      }
+    }
+
+    return { shape: rotatedShape, colors: rotatedColors }
+  }
+
+  private applyJinxedSpawnMutations(): void {
+    if (!this.currentPiece) return
+
+    const rank = this.getActiveVexRank('jinxed')
+    if (rank <= 0) return
+
+    const cfg = getJinxedConfig(rank as VexRank)
+    const shouldRotate = cfg.alwaysRotate || Math.random() < cfg.rotateChance
+
+    if (shouldRotate) {
+      let nextShape = this.currentPiece.shape
+      let nextColors = this.currentPiece.colors
+      const rotationCount = 1 + Math.floor(Math.random() * 3)
+
+      for (let step = 0; step < rotationCount; step++) {
+        const rotated = this.rotatePieceDataClockwise(nextShape, nextColors)
+        nextShape = rotated.shape
+        nextColors = rotated.colors
+      }
+
+      if (this.isValidPosition(nextShape, this.currentPiece.position)) {
+        this.currentPiece.shape = nextShape
+        this.currentPiece.colors = nextColors
+      }
+    }
+
+    if (cfg.colorScramble) {
+      const randomColor = Phaser.Utils.Array.GetRandom(BLOCK_COLORS)
+      this.currentPiece.colors = this.currentPiece.shape.map((row) =>
+        row.map((block) => (block ? randomColor : 0))
+      )
+    }
+
+    if (cfg.columnJitter > 0) {
+      const offsets: number[] = []
+      for (let offset = -cfg.columnJitter; offset <= cfg.columnJitter; offset++) {
+        if (offset !== 0) offsets.push(offset)
+      }
+      Phaser.Utils.Array.Shuffle(offsets)
+
+      for (const offset of offsets) {
+        const candidate = {
+          x: this.currentPiece.position.x + offset,
+          y: this.currentPiece.position.y,
+        }
+        if (this.isValidPosition(this.currentPiece.shape, candidate)) {
+          this.currentPiece.position = candidate
+          break
+        }
+      }
+    }
+  }
+
+  private startMirageTimer(rank: VexRank): void {
+    const cfg = getMirageConfig(rank)
+
+    const scheduleCycle = () => {
+      const offTimer = setTimeout(() => {
+        if (!this.shopping && !this.gameOver) {
+          this.mirageActive = true
+          let colOffset = Phaser.Math.Between(-cfg.colRange, cfg.colRange)
+          if (colOffset === 0) {
+            colOffset = Math.random() < 0.5 ? -1 : 1
+          }
+          this.mirageColOffset = colOffset
+        }
+
+        const onTimer = setTimeout(() => {
+          this.mirageActive = false
+          this.mirageColOffset = 0
+          scheduleCycle()
+        }, cfg.onMs)
+        this.vexIntervals.set('mirage', onTimer)
+      }, cfg.offMs)
+      this.vexIntervals.set('mirage', offTimer)
+    }
+
+    scheduleCycle()
+  }
+
+  private resetPressureCountdownForCurrentPiece(): void {
+    const rank = this.getActiveVexRank('pressure')
+    if (rank > 0 && this.currentPiece) {
+      this.pressureCountdown = getPressureTimeLimit(rank as VexRank)
+      return
+    }
+    this.pressureCountdown = null
+  }
+
+  private triggerCorruptionPulse(rank: VexRank): void {
+    if (rank < 5) return
+    const canvas = this.game.canvas as HTMLCanvasElement | null
+    if (!canvas) return
+
+    if (this.corruptionPulseTimer !== null) {
+      clearTimeout(this.corruptionPulseTimer)
+      this.corruptionPulseTimer = null
+    }
+
+    const intensity = rank >= 8 ? 1.8 : 1.5
+    canvas.style.filter = `brightness(${intensity}) saturate(0)`
+
+    this.corruptionPulseTimer = setTimeout(() => {
+      canvas.style.filter = ''
+      this.corruptionPulseTimer = null
+    }, 200)
+  }
+
   private getFogOccludedAlpha(rank: number): number {
     const clampedRank = Math.max(0, Math.min(10, Math.floor(rank)))
     const values: number[] = [1, 1, 0.98, 0.96, 0.93, 0.88, 0.8, 0.7, 0.55, 0.4, 0.28]
@@ -266,39 +406,95 @@ export class GameScene extends Phaser.Scene {
 
   private getCorruptionParams(rank: VexRank): { intervalMs: number; cellsPerTick: number } {
     const intervalByRank = [0, 8000, 7200, 6400, 5600, 5000, 4400, 3800, 3200, 2600, 2200]
-    const cellsByRank = [0, 1, 1, 2, 2, 3, 3, 4, 5, 6, 7]
+    const cellsByRank = [0, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5]
     return {
       intervalMs: intervalByRank[rank],
       cellsPerTick: cellsByRank[rank],
     }
   }
 
-  private applyCorruptionTick(cellsPerTick: number): void {
+  private applyCorruptionTick(rank: VexRank, cellsPerTick: number): void {
     if (cellsPerTick <= 0) return
 
-    const filledCells: { x: number; y: number }[] = []
+    const filledCells: { x: number; y: number; color: number }[] = []
     for (let y = 0; y < BOARD_HEIGHT; y++) {
       for (let x = 0; x < BOARD_WIDTH; x++) {
         if (this.board[y][x].filled) {
-          filledCells.push({ x, y })
+          filledCells.push({ x, y, color: this.board[y][x].color })
         }
       }
     }
 
     if (filledCells.length === 0) return
 
-    const changes = Math.min(cellsPerTick, filledCells.length)
+    const visited = new Set<string>()
+    let largestCluster: { x: number; y: number }[] = []
+
+    for (const cell of filledCells) {
+      const key = `${cell.x},${cell.y}`
+      if (visited.has(key)) continue
+
+      const cluster: { x: number; y: number }[] = []
+      const queue: { x: number; y: number }[] = [{ x: cell.x, y: cell.y }]
+      visited.add(key)
+
+      while (queue.length > 0) {
+        const current = queue.shift()!
+        cluster.push(current)
+
+        const neighbors = [
+          { x: current.x + 1, y: current.y },
+          { x: current.x - 1, y: current.y },
+          { x: current.x, y: current.y + 1 },
+          { x: current.x, y: current.y - 1 },
+        ]
+
+        for (const neighbor of neighbors) {
+          if (neighbor.x < 0 || neighbor.x >= BOARD_WIDTH || neighbor.y < 0 || neighbor.y >= BOARD_HEIGHT) {
+            continue
+          }
+
+          const neighborKey = `${neighbor.x},${neighbor.y}`
+          if (visited.has(neighborKey)) continue
+
+          const neighborCell = this.board[neighbor.y][neighbor.x]
+          if (!neighborCell.filled || neighborCell.color !== cell.color) continue
+
+          visited.add(neighborKey)
+          queue.push(neighbor)
+        }
+      }
+
+      if (cluster.length > largestCluster.length) {
+        largestCluster = cluster
+      }
+    }
+
+    const targetPool = [...largestCluster]
+    if (targetPool.length < cellsPerTick) {
+      const used = new Set(targetPool.map((c) => `${c.x},${c.y}`))
+      for (const cell of filledCells) {
+        const key = `${cell.x},${cell.y}`
+        if (!used.has(key)) {
+          targetPool.push({ x: cell.x, y: cell.y })
+        }
+      }
+    }
+
+    const changes = Math.min(cellsPerTick, targetPool.length)
     for (let index = 0; index < changes; index++) {
-      const pick = Math.floor(Math.random() * filledCells.length)
-      const { x, y } = filledCells.splice(pick, 1)[0]
+      const pick = Math.floor(Math.random() * targetPool.length)
+      const { x, y } = targetPool.splice(pick, 1)[0]
       const current = this.board[y][x].color
 
       let nextColor = current
-      for (let attempt = 0; attempt < 4 && nextColor === current; attempt++) {
+      for (let attempt = 0; attempt < 6 && nextColor === current; attempt++) {
         nextColor = BLOCK_COLORS[Math.floor(Math.random() * BLOCK_COLORS.length)]
       }
       this.board[y][x].color = nextColor
     }
+
+    this.triggerCorruptionPulse(rank)
   }
 
   private startCorruptionTimer(rank: VexRank): void {
@@ -307,7 +503,7 @@ export class GameScene extends Phaser.Scene {
     const scheduleTick = () => {
       const timeoutId = setTimeout(() => {
         if (!this.shopping && !this.gameOver) {
-          this.applyCorruptionTick(cellsPerTick)
+          this.applyCorruptionTick(rank, cellsPerTick)
           audioManager.playSfx('corruption', { rank })
         }
         scheduleTick()
@@ -571,11 +767,14 @@ export class GameScene extends Phaser.Scene {
     if (this.clearingLines.length > 0) {
       // If we found missed lines, trigger the clear sequence and wait
       this.clearTimer = 5;
+      this.pressureCountdown = null
       return;
     }
 
     this.currentPiece = this.nextPiece!
     this.currentPiece.position = { x: Math.floor(BOARD_WIDTH / 2) - Math.floor(this.currentPiece.shape[0].length / 2), y: 0 }
+    this.applyJinxedSpawnMutations()
+    this.resetPressureCountdownForCurrentPiece()
     this.generateNextPiece()
   }
 
@@ -600,13 +799,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleInput(delta: number, time: number) {
+    const leadFingersRank = this.getActiveVexRank('lead_fingers')
+    const dasBonus = leadFingersRank > 0 ? getLeadFingersDASBonus(leadFingersRank as VexRank) : 0
+    const arrBonus = leadFingersRank > 0 ? getLeadFingersARRBonus(leadFingersRank as VexRank) : 0
+    const dasThresholdMs = (DAS_DELAY + dasBonus) * 16.67
+    const arrThresholdMs = (ARR_DELAY + arrBonus) * 16.67
+
     // Left movement with DAS
     if (Phaser.Input.Keyboard.JustDown(this.leftKey)) {
       this.movePiece(-1, 0)
       this.leftDownTime = 0
     } else if (this.leftKey.isDown) {
       this.leftDownTime += delta
-      if (this.leftDownTime >= DAS_DELAY * 16.67 && (time - this.lastLeftMove) >= ARR_DELAY * 16.67) {
+      if (this.leftDownTime >= dasThresholdMs && (time - this.lastLeftMove) >= arrThresholdMs) {
         this.movePiece(-1, 0)
         this.lastLeftMove = time
       }
@@ -620,7 +825,7 @@ export class GameScene extends Phaser.Scene {
       this.rightDownTime = 0
     } else if (this.rightKey.isDown) {
       this.rightDownTime += delta
-      if (this.rightDownTime >= DAS_DELAY * 16.67 && (time - this.lastRightMove) >= ARR_DELAY * 16.67) {
+      if (this.rightDownTime >= dasThresholdMs && (time - this.lastRightMove) >= arrThresholdMs) {
         this.movePiece(1, 0)
         this.lastRightMove = time
       }
@@ -632,24 +837,32 @@ export class GameScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.zKey) || Phaser.Input.Keyboard.JustDown(this.xKey)) {
       this.rotatePiece()
     } else if (Phaser.Input.Keyboard.JustDown(this.upKey)) {
-      this.hardDrop()
+      this.hardDrop(true)
     } else if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
       this.holdPiece()
     }
   }
 
-  private hardDrop() {
+  private hardDrop(isManual: boolean = false) {
     if (!this.currentPiece) return
     const ghostPos = this.getGhostPosition()
     if (ghostPos) {
       this.currentPiece.position = ghostPos
       audioManager.playSfx('hardDrop')
 
+      if (isManual) {
+        const whiplashRank = this.getActiveVexRank('whiplash')
+        if (whiplashRank > 0) {
+          triggerWhiplash(getWhiplashDuration(whiplashRank as VexRank))
+        }
+      }
+
       // Screen shake and lock immediately
       this.cameras.main.shake(100, 0.003)
       this.lockPiece()
       this.clearLines()
       this.currentPiece = null
+      this.pressureCountdown = null
       this.gravityTimer = 0
     }
   }
@@ -755,6 +968,7 @@ export class GameScene extends Phaser.Scene {
 
     this.heldPiece = newHeldPiece;
     this.canHold = false;
+    this.resetPressureCountdownForCurrentPiece()
     this.gravityTimer = 0;
     audioManager.playSfx('hold')
   }
@@ -773,6 +987,7 @@ export class GameScene extends Phaser.Scene {
 
   private lockPiece() {
     this.canHold = true;
+    this.pressureCountdown = null
     if (!this.currentPiece) return
     const { shape, position, colors } = this.currentPiece
     for (let y = 0; y < shape.length; y++) {
@@ -990,11 +1205,13 @@ export class GameScene extends Phaser.Scene {
     if (this.currentPiece && !this.gameOver && ghostVisible) {
       const ghostPos = this.getGhostPosition();
       if (ghostPos && ghostPos.y > this.currentPiece.position.y) {
+        const ghostRenderX = ghostPos.x + (this.mirageActive ? this.mirageColOffset : 0)
         const { shape, colors } = this.currentPiece;
         for (let y = 0; y < shape.length; y++) {
           for (let x = 0; x < shape[y].length; x++) {
-            if (shape[y][x] && !this.isHardFogOccludedRow(ghostPos.y + y)) {
-              const px = Math.floor(boardOffsetX + (ghostPos.x + x) * BLOCK_SIZE);
+            const boardX = ghostRenderX + x
+            if (shape[y][x] && boardX >= 0 && boardX < BOARD_WIDTH && !this.isHardFogOccludedRow(ghostPos.y + y)) {
+              const px = Math.floor(boardOffsetX + boardX * BLOCK_SIZE);
               const py = Math.floor(boardOffsetY + (ghostPos.y + y) * BLOCK_SIZE);
               let ghostColor = colors[y][x]
               if (amnesiaPieceDesaturation > 0) {
@@ -1007,6 +1224,42 @@ export class GameScene extends Phaser.Scene {
             }
           }
         }
+      }
+    }
+
+    const pressureRank = this.getActiveVexRank('pressure')
+    if (this.currentPiece && pressureRank > 0 && this.pressureCountdown !== null) {
+      const { shape, position } = this.currentPiece
+      const timeLimit = getPressureTimeLimit(pressureRank as VexRank)
+      const ratio = Math.max(0, Math.min(1, this.pressureCountdown / timeLimit))
+
+      let minX = Number.POSITIVE_INFINITY
+      let maxX = Number.NEGATIVE_INFINITY
+      let minY = Number.POSITIVE_INFINITY
+
+      for (let y = 0; y < shape.length; y++) {
+        for (let x = 0; x < shape[y].length; x++) {
+          if (!shape[y][x]) continue
+          minX = Math.min(minX, x)
+          maxX = Math.max(maxX, x)
+          minY = Math.min(minY, y)
+        }
+      }
+
+      if (Number.isFinite(minX) && Number.isFinite(maxX) && Number.isFinite(minY)) {
+        const barX = boardOffsetX + (position.x + minX) * BLOCK_SIZE
+        const barY = boardOffsetY + (position.y + minY) * BLOCK_SIZE - 10
+        const barWidth = Math.max(24, (maxX - minX + 1) * BLOCK_SIZE)
+        const fillWidth = Math.max(0, (barWidth - 2) * ratio)
+
+        const barColor = ratio > 0.4 ? 0x32cd32 : ratio > 0.2 ? 0xffa500 : 0xff3b30
+
+        this.graphics.fillStyle(0x111111, 0.85)
+        this.graphics.fillRect(barX, barY, barWidth, 6)
+        this.graphics.lineStyle(1, 0xffffff, 0.45)
+        this.graphics.strokeRect(barX, barY, barWidth, 6)
+        this.graphics.fillStyle(barColor, 0.95)
+        this.graphics.fillRect(barX + 1, barY + 1, fillWidth, 4)
       }
     }
 
@@ -1352,6 +1605,22 @@ export class GameScene extends Phaser.Scene {
     // Input handling
     this.handleInput(delta, time);
 
+    const pressureRank = this.getActiveVexRank('pressure')
+    if (pressureRank > 0 && this.currentPiece) {
+      if (this.pressureCountdown === null) {
+        this.resetPressureCountdownForCurrentPiece()
+      }
+      if (this.pressureCountdown !== null) {
+        this.pressureCountdown = Math.max(0, this.pressureCountdown - delta / 1000)
+        if (this.pressureCountdown <= 0) {
+          this.hardDrop(false)
+          return
+        }
+      }
+    } else {
+      this.pressureCountdown = null
+    }
+
     // --- Resolve Drain: Hybrid system ---
     // TODO: Vex modifiers can adjust REALTIME_DRAIN_PER_SECOND.
     this.resolveCurrent -= delta * this.REALTIME_DRAIN_PER_SECOND / 1000;
@@ -1561,7 +1830,7 @@ export class GameScene extends Phaser.Scene {
 
     // Small delay so the flash is visible before overlay appears
     this.time.delayedCall(400, () => {
-      showVexShop(this.activeVexes, this.currentLevel, () => {
+      showVexShop(this.activeVexes, this.currentLevel, this.resolveCurrent, this.currentLevelParams.resolveMax, () => {
         this.startNextLevel()
       })
     })
@@ -1850,6 +2119,17 @@ export class GameScene extends Phaser.Scene {
       clearTimeout(timerId);
     }
     this.vexIntervals.clear();
+    disableTremor()
+    disableWhiplash()
+
+    this.mirageActive = false
+    this.mirageColOffset = 0
+
+    if (this.corruptionPulseTimer !== null) {
+      clearTimeout(this.corruptionPulseTimer)
+      this.corruptionPulseTimer = null
+      this.game.canvas.style.filter = ''
+    }
   }
 
   /**
@@ -1868,16 +2148,41 @@ export class GameScene extends Phaser.Scene {
       this.fogHeightPx = 0
       setFogHeight(0)
     }
+    if (!activeIds.has('tremor')) {
+      disableTremor()
+    }
+    if (!activeIds.has('whiplash')) {
+      disableWhiplash()
+    }
+    if (!activeIds.has('mirage')) {
+      this.mirageActive = false
+      this.mirageColOffset = 0
+    }
+    if (!activeIds.has('pressure')) {
+      this.pressureCountdown = null
+    }
 
     for (const vex of this.activeVexes) {
       if (vex.id === 'blackout' || vex.id === 'fog') {
         vex.onApply?.(vex.rank)
+      }
+      if (vex.id === 'tremor') {
+        enableTremor(this, vex.rank)
+      }
+      if (vex.id === 'whiplash') {
+        enableWhiplash()
       }
       if (vex.id === 'rising_dread') {
         this.startRisingDreadTimer(vex.rank);
       }
       if (vex.id === 'corruption') {
         this.startCorruptionTimer(vex.rank)
+      }
+      if (vex.id === 'mirage') {
+        this.startMirageTimer(vex.rank)
+      }
+      if (vex.id === 'pressure') {
+        this.resetPressureCountdownForCurrentPiece()
       }
     }
   }
@@ -1892,10 +2197,21 @@ export class GameScene extends Phaser.Scene {
   private initRun(): void {
     disableBlackout()
     disableFog()
+    disableTremor()
+    disableWhiplash()
     setFogHeight(0)
     this.lastFogPulseAtMs = 0
     this.lastBlackoutPulseAtMs = 0
     this.lastGhostVisible = true
+    this.mirageActive = false
+    this.mirageColOffset = 0
+    this.pressureCountdown = null
+
+    if (this.corruptionPulseTimer !== null) {
+      clearTimeout(this.corruptionPulseTimer)
+      this.corruptionPulseTimer = null
+    }
+    this.game.canvas.style.filter = ''
 
     // Level progression
     this.currentLevel = 1
