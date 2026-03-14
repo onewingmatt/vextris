@@ -95,6 +95,17 @@
             font-family: 'Press Start 2P', cursive;
             text-align: center;
         }
+        .howto-text {
+            max-width: 560px;
+            margin: 0 20px 24px;
+            color: #c1b2a4;
+            font-size: 10px;
+            line-height: 1.6;
+            text-align: left;
+            max-height: 52vh;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
         .styled-btn {
             background: #1f1722;
             border: 2px solid #66353d;
@@ -235,7 +246,7 @@
             z-index: 1;
         }
     </style>
-  <script type="module" crossorigin src="./assets/index-Db9P_dCJ.js"></script>
+  <script type="module" crossorigin src="./assets/index-DHw8Zf86.js"></script>
 </head>
 <body>
     <div id="game">
@@ -244,6 +255,27 @@
             <h1 class="occult-title">Vextris</h1>
             <h2>The Rite of Descent</h2>
             <button id="btn-begin-rite" class="styled-btn">Begin the Rite</button>
+            <button id="btn-rite-lore" class="styled-btn">Learn the Rite</button>
+        </div>
+
+        <div id="howto-screen" class="overlay-screen hidden">
+            <h1 class="occult-title">The Rite</h1>
+            <h2>How Tribute is Forged</h2>
+            <div class="howto-text">
+                The altar drinks what you offer. Runes burned together feed it more than the same runes burned alone.
+                When clusters of the same hue collapse, the tribute grows faster than the sum of its parts. The altar
+                prefers wide, hungry clusters to scattered scraps.
+
+                When you shatter more than one seal at once, the ritual surges. The void hungers for such momentum and
+                amplifies the tribute; the more seals you break in a single strike, the more the void leans in.
+
+                The pacts you bind (Vexes) are not mercy. They twist the rite, carving deeper hunger into the altar.
+                Some pacts make the runes burn hotter. Others make the strike itself scream louder. Both feed the void.
+
+                Your Resolve is finite. Each rune you drop takes a toll. The altar accepts only as long as you stand.
+                Move the runes with the arrows, turn them with Z/X, and call the spare to your palm with SPACE.
+            </div>
+            <button id="btn-close-howto" class="styled-btn">Return to the Altar</button>
         </div>
 
         <div id="pause-screen" class="overlay-screen hidden">
@@ -282,6 +314,6 @@
                 e.preventDefault();
             }
         });
-    </script>
+    </script>
 </body>
 </html>
