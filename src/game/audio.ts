@@ -624,7 +624,7 @@ export class AudioManager {
       osc.frequency.setValueAtTime(freq, time)
 
       gain.gain.setValueAtTime(0.0001, time)
-      gain.gain.linearRampToValueAtTime(0.18, time + 0.12)
+      gain.gain.linearRampToValueAtTime(0.42, time + 0.12)
       gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.56)
 
       osc.connect(gain)
