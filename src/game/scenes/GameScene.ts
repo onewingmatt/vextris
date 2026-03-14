@@ -676,7 +676,7 @@ export class GameScene extends Phaser.Scene {
     const clusterValueText = this.add.text(boxX + clusterConfig.width / 2 - 10, topChipY, '', {
       fontSize: '9px', fontFamily: '"Press Start 2P", monospace', color: '#efe1d3', align: 'right', padding: { left: 0, right: 0, top: 0, bottom: 0 }
     }).setOrigin(1, 0.5).setDepth(7);
-    let clusterTexts: Phaser.GameObjects.Text[] = [];
+    const clusterTexts: Phaser.GameObjects.Text[] = [];
     this.lastChips.push({ bg: clusterBg, text: clusterValueText, label: clusterLabel, config: clusterConfig, clusterTexts });
 
     // Bottom row: separator line and TOTAL
@@ -727,7 +727,7 @@ export class GameScene extends Phaser.Scene {
         padding: { left: 0, right: 0, top: 0, bottom: 0 }
       }).setOrigin(1, 0.5).setDepth(7);
 
-      (bg as any).chipColor = config.color;
+      (bg as Phaser.GameObjects.Rectangle & { chipColor: number }).chipColor = config.color;
       this.lastChips.push({ bg, text: valueText, label: labelText, config });
       bottomChipX += config.width + chipGap;
     }
@@ -1631,19 +1631,19 @@ export class GameScene extends Phaser.Scene {
             if (this.scoringClusters.length > 0) {
               // Sort clusters by size descending
               const clustersSorted = [...this.scoringClusters].sort((a, b) => b.blocks.length - a.blocks.length);
-              let x = clusterChip.text.x;
+              const x = clusterChip.text.x;
               const y = clusterChip.text.y;
               const sep = '·';
               const maxWidth = clusterChip.config.width - 38; // leave space for icon and padding
-              let tempTexts: Phaser.GameObjects.Text[] = [];
+              const tempTexts: Phaser.GameObjects.Text[] = [];
               let totalWidth = 0;
               let shown = 0;
               let otherSum = 0;
               // Try to fit as many as possible, then aggregate the rest
               for (let i = 0; i < clustersSorted.length; ++i) {
                 const cluster = clustersSorted[i];
-                let hex = Phaser.Display.Color.IntegerToColor(cluster.color).color;
-                let hexStr = '#' + hex.toString(16).padStart(6, '0');
+                const hex = Phaser.Display.Color.IntegerToColor(cluster.color).color;
+                const hexStr = '#' + hex.toString(16).padStart(6, '0');
                 // Create a temp text to measure width
                 const txt = this.add.text(0, y, `${cluster.blocks.length}`, {
                   fontSize: '9px', fontFamily: '"Press Start 2P", monospace', color: hexStr, align: 'right',
@@ -1654,7 +1654,7 @@ export class GameScene extends Phaser.Scene {
                     fontSize: '9px', fontFamily: '"Press Start 2P", monospace', color: '#BBBBBB', align: 'right',
                   }).setOrigin(1, 0.5).setDepth(8);
                 }
-                let nextWidth = totalWidth + txt.width + (sepTxt ? sepTxt.width : 0);
+                const nextWidth = totalWidth + txt.width + (sepTxt ? sepTxt.width : 0);
                 // If adding this cluster would overflow, aggregate the rest
                 if (nextWidth > maxWidth && shown > 0) {
                   txt.destroy(); if (sepTxt) sepTxt.destroy();
@@ -2442,7 +2442,7 @@ export class GameScene extends Phaser.Scene {
 
     // Stronger rank curve: mild at low ranks, severe by rank 8+.
     const desaturationByRank = [0, 0.08, 0.15, 0.24, 0.34, 0.47, 0.6, 0.73, 0.84, 0.93, 1]
-    let desaturation = desaturationByRank[Math.max(0, Math.min(10, this.fogRank))]
+    const desaturation = desaturationByRank[Math.max(0, Math.min(10, this.fogRank))]
     
     const r = (color >> 16) & 0xFF
     const g = (color >> 8) & 0xFF
@@ -2556,7 +2556,7 @@ export class GameScene extends Phaser.Scene {
         const desc = document.createElement('div');
         desc.textContent = vex.description;
 
-        const flavorText = vex.getFlavorText ? vex.getFlavorText(vex.rank as any) : '';
+        const flavorText = vex.getFlavorText ? vex.getFlavorText(vex.rank as Parameters<NonNullable<typeof vex.getFlavorText>>[0]) : '';
         const flavor = document.createElement('span');
         flavor.className = 'flavor';
         flavor.textContent = flavorText;
