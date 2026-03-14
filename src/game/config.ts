@@ -31,17 +31,17 @@ export const DAS_DELAY = 16 // Delayed Auto Shift
 export const ARR_DELAY = 6 // Auto Repeat Rate
 export const SOFT_DROP_DELAY = 0 // Immediate
 
-// Colors: Distinct vibrant palette
+// Colors: occult-forward palette that keeps all piece hues clearly distinct
 export const COLORS = {
-  background: 0x000000, // Black
-  empty: 0x111111, // Dark gray
-  blockI: 0x00BFFF, // Deep Sky Blue
-  blockO: 0xFFD700, // Gold
-  blockT: 0xDA70D6, // Orchid
-  blockS: 0x32CD32, // Lime Green
-  blockZ: 0xFF6347, // Tomato
-  blockJ: 0x4169E1, // Royal Blue
-  blockL: 0xFFA07A, // Light Salmon
+  background: 0x07060b, // Near-black violet stone
+  empty: 0x19141f, // Ritual slate
+  blockI: 0x4eb7cf, // Ether cyan
+  blockO: 0xcfae58, // Relic gold
+  blockT: 0x9b71c8, // Hex violet
+  blockS: 0x69a15a, // Moss green
+  blockZ: 0xbe5a50, // Blood clay
+  blockJ: 0x4f67b2, // Dusk indigo
+  blockL: 0xce8648, // Ember amber
 }
 
 // Pieces

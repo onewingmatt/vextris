@@ -35,9 +35,9 @@ type QuicksandTierState = {
 }
 
 const QUICKSAND_TIERS: QuicksandTier[] = [
-  { ranksToAdd: 1, minResolveRatio: 0, accent: '#7f8c8d' },
-  { ranksToAdd: 2, minResolveRatio: 0.4, accent: '#00BFFF' },
-  { ranksToAdd: 3, minResolveRatio: 0.7, accent: '#FFD700' },
+  { ranksToAdd: 1, minResolveRatio: 0, accent: '#8f7764' },
+  { ranksToAdd: 2, minResolveRatio: 0.4, accent: '#7db0be' },
+  { ranksToAdd: 3, minResolveRatio: 0.7, accent: '#caa56c' },
 ]
 
 const SHOP_CSS = `
@@ -45,11 +45,26 @@ const SHOP_CSS = `
   position: fixed;
   inset: 0;
   overflow-y: auto;
-  background: rgba(0, 0, 0, 0.82);
+  background:
+    radial-gradient(circle at 20% 15%, rgba(122, 66, 72, 0.26), rgba(0, 0, 0, 0) 45%),
+    radial-gradient(circle at 82% 80%, rgba(98, 77, 55, 0.2), rgba(0, 0, 0, 0) 42%),
+    rgba(7, 6, 11, 0.9);
   z-index: 1000;
   font-family: "Press Start 2P", monospace;
   backdrop-filter: blur(4px);
   touch-action: pan-y;
+}
+
+#vextris-shop::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.16;
+  background:
+    repeating-linear-gradient(45deg, rgba(216, 197, 177, 0.18) 0px, rgba(216, 197, 177, 0.18) 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 12px),
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(14, 10, 18, 0.66) 100%);
+  mix-blend-mode: screen;
 }
 
 #vextris-shop .shop-inner {
@@ -64,16 +79,16 @@ const SHOP_CSS = `
 }
 
 #vextris-shop h2 {
-  color: #fff;
+  color: #d8c5b1;
   font-size: 20px;
   letter-spacing: 2px;
   margin: 0;
   text-align: center;
-  text-shadow: 0 0 18px rgba(50, 205, 50, 0.8);
+  text-shadow: 0 0 18px rgba(122, 66, 72, 0.55);
 }
 
 #vextris-shop .shop-subtitle {
-  color: #888;
+  color: #9f8d7c;
   font-size: 9px;
   letter-spacing: 1px;
   margin-top: -10px;
@@ -91,13 +106,14 @@ const SHOP_CSS = `
 #vextris-shop .card {
   width: 200px;
   min-height: 240px;
-  background: #0d1117;
-  border: 2px solid #333;
+  background: linear-gradient(165deg, #17111d 0%, #110d15 100%);
+  border: 2px solid #4a2c34;
   border-radius: 10px;
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  position: relative;
   cursor: pointer;
   transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
   box-sizing: border-box;
@@ -111,30 +127,42 @@ const SHOP_CSS = `
 #vextris-shop .card:hover,
 #vextris-shop .card:focus-visible {
   transform: translateY(-6px) scale(1.03);
-  border-color: #32CD32;
-  box-shadow: 0 0 20px rgba(50, 205, 50, 0.35);
+  border-color: #b56557;
+  box-shadow: 0 0 20px rgba(181, 101, 87, 0.3);
+}
+
+#vextris-shop .card::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(216, 197, 177, 0.24);
+  box-shadow: 0 0 0 1px rgba(216, 197, 177, 0.12);
 }
 
 #vextris-shop .card:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid #d8c5b1;
   outline-offset: 2px;
 }
 
 #vextris-shop .card.color-vex {
-  border-color: #4a3a00;
+  border-color: #5e4830;
 }
 #vextris-shop .card.color-vex:hover,
 #vextris-shop .card.color-vex:focus-visible {
-  border-color: #FFD700;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.35);
+  border-color: #c49b61;
+  box-shadow: 0 0 20px rgba(196, 155, 97, 0.34);
 }
 #vextris-shop .card.line-vex {
-  border-color: #00274a;
+  border-color: #34515d;
 }
 #vextris-shop .card.line-vex:hover,
 #vextris-shop .card.line-vex:focus-visible {
-  border-color: #00BFFF;
-  box-shadow: 0 0 20px rgba(0, 191, 255, 0.35);
+  border-color: #89acb8;
+  box-shadow: 0 0 20px rgba(137, 172, 184, 0.32);
 }
 
 #vextris-shop .card-label {
@@ -146,28 +174,28 @@ const SHOP_CSS = `
   display: inline-block;
   align-self: flex-start;
 }
-.color-vex .card-label { background: #2a1f00; color: #FFD700; }
-.line-vex .card-label { background: #001a2e; color: #00BFFF; }
-.rankup-badge { background: #1a003a; color: #bf8fff; }
-.rarity-badge { background: #1a1a1a; color: #cfd4db; margin-top: 2px; }
+.color-vex .card-label { background: #2f2314; color: #caa56c; }
+.line-vex .card-label { background: #162735; color: #89acb8; }
+.rankup-badge { background: #32203d; color: #c39bd0; }
+.rarity-badge { background: #211a22; color: #c9b8aa; margin-top: 2px; }
 
 #vextris-shop .card-name {
   font-size: 11px;
-  color: #fff;
+  color: #f0e6d8;
   line-height: 1.6;
   padding-right: 4px;
 }
 
 #vextris-shop .card-rank {
   font-size: 9px;
-  color: #888;
+  color: #9f8d7c;
 }
-#vextris-shop .card-rank .new-rank { color: #32CD32; }
-#vextris-shop .card-rank .up-rank { color: #bf8fff; }
+#vextris-shop .card-rank .new-rank { color: #cfa36b; }
+#vextris-shop .card-rank .up-rank { color: #c39bd0; }
 
 #vextris-shop .card-desc {
   font-size: 8px;
-  color: #bbb;
+  color: #c1b2a4;
   line-height: 1.8;
   flex: 1;
   padding: 4px 0;
@@ -175,47 +203,48 @@ const SHOP_CSS = `
 
 #vextris-shop .card-downside {
   font-size: 7px;
-  color: #FF6347;
+  color: #b56f65;
   line-height: 1.7;
-  border-top: 1px solid #2a2a2a;
+  border-top: 1px solid #352730;
   padding-top: 8px;
 }
 
 #vextris-shop .card-mult {
   font-size: 8px;
-  color: #32CD32;
+  color: #d7b172;
   align-self: flex-end;
 }
 
 #vextris-shop .vex-flavor-text {
   font-size: 7px;
-  color: #888888;
+  color: #9a8b80;
   font-style: italic;
   line-height: 1.8;
-  border-top: 1px solid #2a2a2a;
+  border-top: 1px solid #352730;
   margin-top: 6px;
   padding-top: 8px;
 }
 
 #vextris-shop .quicksand-slot {
   width: min(100%, 760px);
-  background: rgba(13, 17, 23, 0.88);
-  border: 2px solid #4b3a2a;
+  background: rgba(20, 16, 25, 0.9);
+  border: 2px solid #5b4636;
   border-radius: 10px;
   padding: 12px;
   box-sizing: border-box;
+  box-shadow: inset 0 0 18px rgba(121, 66, 72, 0.12);
 }
 
 #vextris-shop .quicksand-title {
   font-size: 10px;
-  color: #f0d9b5;
+  color: #e2c8ab;
   margin-bottom: 8px;
   letter-spacing: 1px;
 }
 
 #vextris-shop .quicksand-subtitle {
   font-size: 7px;
-  color: #ab9f90;
+  color: #b39d89;
   margin-bottom: 10px;
   line-height: 1.6;
 }
@@ -229,10 +258,10 @@ const SHOP_CSS = `
 #vextris-shop .quicksand-tier {
   min-width: 132px;
   flex: 1;
-  border: 2px solid #5f5f5f;
+  border: 2px solid #6c5b4b;
   border-radius: 8px;
-  background: #141920;
-  color: #d8dee8;
+  background: #191620;
+  color: #d8cec0;
   padding: 10px;
   text-align: left;
   cursor: pointer;
@@ -243,12 +272,12 @@ const SHOP_CSS = `
 #vextris-shop .quicksand-tier:hover,
 #vextris-shop .quicksand-tier:focus-visible {
   transform: translateY(-2px);
-  box-shadow: 0 0 14px rgba(255, 215, 0, 0.18);
+  box-shadow: 0 0 14px rgba(202, 165, 108, 0.24);
 }
 
 #vextris-shop .quicksand-tier.selected {
-  border-color: #FFD700;
-  box-shadow: 0 0 18px rgba(255, 215, 0, 0.3);
+  border-color: #caa56c;
+  box-shadow: 0 0 18px rgba(202, 165, 108, 0.32);
 }
 
 #vextris-shop .quicksand-tier.locked,
@@ -262,7 +291,7 @@ const SHOP_CSS = `
 
 #vextris-shop .qs-tier-name {
   font-size: 8px;
-  color: #f8f3e3;
+  color: #f4e7d4;
   margin-bottom: 8px;
 }
 
@@ -274,7 +303,7 @@ const SHOP_CSS = `
 }
 
 #vextris-shop .qs-tier-lock {
-  color: #ff6e6e;
+  color: #cf8075;
 }
 
 @media (max-width: 700px) {
@@ -629,8 +658,8 @@ function renderCard(offer: ShopOffer, idx: number): string {
       <span class="card-label rarity-badge">${rarityLabel}</span>
       <div class="card-name">${vex.name}</div>
       <div class="card-rank">
-        <span style="color:#888">RANK ${fromRank}</span>
-        <span style="color:#fff"> -> </span>
+        <span style="color:#9f8d7c">RANK ${fromRank}</span>
+        <span style="color:#e7d7c7"> -> </span>
         <span class="up-rank">RANK ${toRank}</span>
       </div>
       <div class="card-desc">${vex.description}</div>

@@ -43,7 +43,7 @@ const BAR_CSS = `
   max-width: 64px;
   min-width: 48px;
   height: 82px;
-  background: linear-gradient(160deg, #0d1520 0%, #080e18 100%);
+  background: linear-gradient(160deg, #1a1420 0%, #120f18 100%);
   border-radius: 6px;
   display: flex;
   flex-direction: column;
@@ -53,7 +53,7 @@ const BAR_CSS = `
   gap: 3px;
   position: relative;
   overflow: visible;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.62), inset 0 1px 0 rgba(240,220,200,0.06);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   animation: vex-card-in 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
 }
@@ -66,8 +66,8 @@ const BAR_CSS = `
   height: 3px;
   border-radius: 6px 6px 0 0;
 }
-.vex-card.color-vex::before { background: linear-gradient(90deg, #b8860b, #FFD700, #b8860b); }
-.vex-card.line-vex::before  { background: linear-gradient(90deg, #005f8f, #00BFFF, #005f8f); }
+.vex-card.color-vex::before { background: linear-gradient(90deg, #87633b, #caa56c, #87633b); }
+.vex-card.line-vex::before  { background: linear-gradient(90deg, #4e6f7b, #89acb8, #4e6f7b); }
 
 /* Left edge glow strip */
 .vex-card::after {
@@ -77,12 +77,12 @@ const BAR_CSS = `
   width: 2px;
   border-radius: 0 0 0 6px;
 }
-.vex-card.color-vex::after { background: rgba(255, 215, 0, 0.25); }
-.vex-card.line-vex::after  { background: rgba(0, 191, 255, 0.25); }
+.vex-card.color-vex::after { background: rgba(202, 165, 108, 0.26); }
+.vex-card.line-vex::after  { background: rgba(137, 172, 184, 0.24); }
 
 /* Border */
-.vex-card.color-vex { border: 1px solid rgba(255,215,0,0.30); }
-.vex-card.line-vex  { border: 1px solid rgba(0,191,255,0.25); }
+.vex-card.color-vex { border: 1px solid rgba(202,165,108,0.34); }
+.vex-card.line-vex  { border: 1px solid rgba(137,172,184,0.28); }
 
 /* Kind badge */
 .vex-card-kind {
@@ -95,14 +95,14 @@ const BAR_CSS = `
   align-self: stretch;
   text-align: center;
 }
-.color-vex .vex-card-kind { background: rgba(255,215,0,0.12); color: #FFD700; }
-.line-vex  .vex-card-kind { background: rgba(0,191,255,0.10); color: #00BFFF; }
+.color-vex .vex-card-kind { background: rgba(202,165,108,0.14); color: #caa56c; }
+.line-vex  .vex-card-kind { background: rgba(137,172,184,0.12); color: #89acb8; }
 
 /* Vex name */
 .vex-card-name {
   font-family: "Press Start 2P", monospace;
   font-size: 6px;
-  color: #ddd;
+  color: #dac7b4;
   text-align: center;
   line-height: 1.5;
   word-break: break-word;
@@ -115,8 +115,8 @@ const BAR_CSS = `
   font-size: 8px;
   font-weight: bold;
 }
-.color-vex .vex-card-rank { color: #FFD700; }
-.line-vex  .vex-card-rank { color: #00BFFF; }
+.color-vex .vex-card-rank { color: #d1ae72; }
+.line-vex  .vex-card-rank { color: #96b8c4; }
 
 /* Slide-in animation when a card appears */
 @keyframes vex-card-in {

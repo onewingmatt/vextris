@@ -26,15 +26,15 @@ const PANEL_CSS = `
   right: 12px;
   width: min(360px, calc(100vw - 24px));
   max-height: calc(100vh - 24px);
-  background: rgba(8, 12, 20, 0.96);
-  border: 2px solid #444;
+  background: rgba(16, 12, 22, 0.96);
+  border: 2px solid #5a3a42;
   border-radius: 8px;
   z-index: 2000;
   font-family: "Press Start 2P", monospace;
-  color: #fff;
+  color: #e8d9c8;
   padding: 14px;
   gap: 0;
-  box-shadow: 0 0 30px rgba(0,0,0,0.7);
+  box-shadow: 0 0 30px rgba(0,0,0,0.74);
   touch-action: none;
   overflow-y: auto;
 }
@@ -43,14 +43,14 @@ const PANEL_CSS = `
 #${PANEL_ID} h3 {
   margin: 0 0 10px;
   font-size: 10px;
-  color: #32CD32;
+  color: #d6b07a;
   letter-spacing: 1px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid #4a2d35;
   padding-bottom: 8px;
 }
 #${PANEL_ID} .dev-hint {
   font-size: 7px;
-  color: #555;
+  color: #8f7d70;
   margin-bottom: 10px;
 }
 
@@ -59,18 +59,18 @@ const PANEL_CSS = `
   align-items: center;
   justify-content: space-between;
   padding: 6px 0;
-  border-bottom: 1px solid #1a1a1a;
+  border-bottom: 1px solid #2a1f2a;
   gap: 6px;
 }
 #${PANEL_ID} .vex-name {
   font-size: 8px;
-  color: #ccc;
+  color: #d4c2b2;
   flex: 1;
   line-height: 1.4;
   padding-right: 4px;
 }
-#${PANEL_ID} .vex-name.color-kind { color: #FFD700; }
-#${PANEL_ID} .vex-name.line-kind  { color: #00BFFF; }
+#${PANEL_ID} .vex-name.color-kind { color: #caa56c; }
+#${PANEL_ID} .vex-name.line-kind  { color: #89acb8; }
 
 #${PANEL_ID} .rank-btns {
   display: flex;
@@ -84,9 +84,9 @@ const PANEL_CSS = `
   font-size: 6px;
   width: 18px;
   height: 18px;
-  border: 1px solid #444;
-  background: #111;
-  color: #666;
+  border: 1px solid #5a3a42;
+  background: #19121f;
+  color: #8f7d70;
   cursor: pointer;
   border-radius: 3px;
   padding: 0;
@@ -94,14 +94,14 @@ const PANEL_CSS = `
   text-align: center;
 }
 #${PANEL_ID} .rank-btn.active {
-  background: #1a3a1a;
-  color: #32CD32;
-  border-color: #32CD32;
+  background: #2a1c21;
+  color: #d6b07a;
+  border-color: #d6b07a;
 }
 #${PANEL_ID} .rank-btn.off {
-  background: #111;
-  color: #444;
-  border-color: #222;
+  background: #19121f;
+  color: #5f4f58;
+  border-color: #2b202f;
 }
 
 #${PANEL_ID} .clear-btn {
@@ -110,14 +110,14 @@ const PANEL_CSS = `
   font-family: "Press Start 2P", monospace;
   font-size: 8px;
   padding: 7px;
-  background: #2a0808;
-  color: #FF6347;
-  border: 1px solid #5a1a1a;
+  background: #2a1215;
+  color: #c97567;
+  border: 1px solid #704048;
   border-radius: 4px;
   cursor: pointer;
   letter-spacing: 1px;
 }
-#${PANEL_ID} .clear-btn:hover { background: #3a1010; }
+#${PANEL_ID} .clear-btn:hover { background: #3a171b; }
 
 @media (max-width: 700px) {
   #${PANEL_ID} {

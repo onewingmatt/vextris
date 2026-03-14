@@ -208,17 +208,17 @@ export class GameScene extends Phaser.Scene {
 
   private getLineClearThemeColor(linesCleared: number): number {
     const clampedLines = Math.max(1, Math.min(4, linesCleared))
-    const lineAccentByCount = [0, 0x45c4ff, 0x4fe6c7, 0xffb84d, 0xff6b6b]
+    const lineAccentByCount = [0, 0x7eaec0, 0x7fbf93, 0xc9a064, 0xbb635a]
 
     const sortedClusters = [...this.scoringClusters].sort((left, right) => right.blocks.length - left.blocks.length)
     let themeColor = sortedClusters[0]?.color ?? lineAccentByCount[clampedLines]
     themeColor = this.blendColors(themeColor, lineAccentByCount[clampedLines], 0.35)
 
     if (this.getActiveVexRank('corruption') > 0) {
-      themeColor = this.blendColors(themeColor, 0xb15cff, 0.18)
+      themeColor = this.blendColors(themeColor, 0x8754b5, 0.18)
     }
     if (this.getActiveVexRank('fog') > 0 || this.getActiveVexRank('blackout') > 0) {
-      themeColor = this.blendColors(themeColor, 0xa7b0ba, 0.22)
+      themeColor = this.blendColors(themeColor, 0xaaa39c, 0.22)
     }
 
     return themeColor
@@ -570,33 +570,33 @@ export class GameScene extends Phaser.Scene {
     let hudY = 112;
 
     // HUD Panel background
-    this.add.rectangle(hudX - 16, hudY - 16, 208, 608, 0x111111, 0.6).setOrigin(0, 0).setStrokeStyle(4, 0x333333);
+    this.add.rectangle(hudX - 16, hudY - 16, 208, 608, 0x130f16, 0.74).setOrigin(0, 0).setStrokeStyle(4, 0x4a2c34);
 
     const hudFont = {
       fontSize: '16px',
       fontFamily: '"Press Start 2P", monospace',
-      color: '#ffffff',
+      color: '#d8c5b1',
     };
     const hudValueFont = { ...hudFont, fontSize: '14px' };
 
     // SEAL
     this.add.text(hudX, hudY, 'SEAL', hudFont).setOrigin(0, 0);
-    this.hudLevelText = this.add.text(hudX, hudY + 20, '1', { ...hudFont, color: '#32CD32', fontSize: '22px' }).setOrigin(0, 0);
+    this.hudLevelText = this.add.text(hudX, hudY + 20, '1', { ...hudFont, color: '#c56b5c', fontSize: '22px' }).setOrigin(0, 0);
     hudY += 60;
 
     // TRIBUTE  (cur / target)
     this.add.text(hudX, hudY, 'TRIBUTE', hudFont).setOrigin(0, 0);
-    this.hudScoreText = this.add.text(hudX, hudY + 20, '0/800', { ...hudValueFont, color: '#00BFFF' }).setOrigin(0, 0);
+    this.hudScoreText = this.add.text(hudX, hudY + 20, '0/800', { ...hudValueFont, color: '#9dbbc7' }).setOrigin(0, 0);
     hudY += 60;
 
     // TIME
     this.add.text(hudX, hudY, 'RESOLVE', hudFont).setOrigin(0, 0);
-    this.hudTimeText = this.add.text(hudX, hudY + 20, '80/80', { ...hudValueFont, color: '#FFD700' }).setOrigin(0, 0);
+    this.hudTimeText = this.add.text(hudX, hudY + 20, '80/80', { ...hudValueFont, color: '#cfad72' }).setOrigin(0, 0);
     hudY += 60;
 
     // SPEED (gravity level)
     this.add.text(hudX, hudY, 'SPEED', hudFont).setOrigin(0, 0);
-    this.hudSpeedText = this.add.text(hudX, hudY + 20, '0', { ...hudValueFont, color: '#FF6347' }).setOrigin(0, 0);
+    this.hudSpeedText = this.add.text(hudX, hudY + 20, '0', { ...hudValueFont, color: '#ba6b5f' }).setOrigin(0, 0);
     hudY += 60;
 
     // NEXT
@@ -616,16 +616,16 @@ export class GameScene extends Phaser.Scene {
     const boxY = boardBottomY + 8;
 
     // Background panel
-    this.lastCalcBox = this.add.rectangle(boxX, boxY, boxWidth, boxHeight, 0x0a0a0a, 0.95)
-      .setOrigin(0.5, 0).setDepth(5).setStrokeStyle(2, 0x333333);
+    this.lastCalcBox = this.add.rectangle(boxX, boxY, boxWidth, boxHeight, 0x0f0c12, 0.95)
+      .setOrigin(0.5, 0).setDepth(5).setStrokeStyle(2, 0x4a2c34);
 
     // Top accent line
-    this.add.rectangle(boxX, boxY, boxWidth, 2, 0x00BFFF, 0.8).setOrigin(0.5, 0).setDepth(6);
+    this.add.rectangle(boxX, boxY, boxWidth, 2, 0x7a4248, 0.8).setOrigin(0.5, 0).setDepth(6);
 
     // Top row: breakdown chips [clusters] [lines] [color mult] [line mult]
     const topConfigs = [
       // Top row: single full-width CLUSTER chip
-      { id: 'clusters', icon: '@', label: 'CLUSTER', color: 0x8a8a8a, width: boxWidth - 32 },
+      { id: 'clusters', icon: '@', label: 'CLUSTER', color: 0x8f7764, width: boxWidth - 32 },
     ];
 
     const chipGap = 6;
@@ -633,33 +633,33 @@ export class GameScene extends Phaser.Scene {
     this.lastChips = [];
     // Single full-width CLUSTER chip, centered
     const clusterConfig = topConfigs[0];
-    const clusterBg = this.add.rectangle(boxX, topChipY, clusterConfig.width, 20, 0x141414, 0.9)
+    const clusterBg = this.add.rectangle(boxX, topChipY, clusterConfig.width, 20, 0x1a141c, 0.9)
       .setOrigin(0.5, 0.5).setDepth(6).setStrokeStyle(1, clusterConfig.color);
     this.add.rectangle(boxX - clusterConfig.width / 2 + 14, topChipY, 14, 14, clusterConfig.color, 0.22)
       .setOrigin(0.5, 0.5).setDepth(7).setStrokeStyle(1, clusterConfig.color, 0.8);
     this.add.text(boxX - clusterConfig.width / 2 + 14, topChipY, clusterConfig.icon, {
-      fontSize: '8px', fontFamily: '"Press Start 2P", monospace', color: '#FFFFFF',
+      fontSize: '8px', fontFamily: '"Press Start 2P", monospace', color: '#f0e6d8',
     }).setOrigin(0.5, 0.5).setDepth(8);
     const clusterLabel = this.add.text(boxX - clusterConfig.width / 2 + 25, topChipY, clusterConfig.label, {
-      fontSize: '8px', fontFamily: '"Press Start 2P", monospace', color: '#D2D2D2', align: 'left', padding: { left: 0, right: 0, top: 0, bottom: 0 }
+      fontSize: '8px', fontFamily: '"Press Start 2P", monospace', color: '#b8a796', align: 'left', padding: { left: 0, right: 0, top: 0, bottom: 0 }
     }).setOrigin(0, 0.5).setDepth(7);
     const clusterValueText = this.add.text(boxX + clusterConfig.width / 2 - 10, topChipY, '', {
-      fontSize: '9px', fontFamily: '"Press Start 2P", monospace', color: '#FFFFFF', align: 'right', padding: { left: 0, right: 0, top: 0, bottom: 0 }
+      fontSize: '9px', fontFamily: '"Press Start 2P", monospace', color: '#efe1d3', align: 'right', padding: { left: 0, right: 0, top: 0, bottom: 0 }
     }).setOrigin(1, 0.5).setDepth(7);
     let clusterTexts: Phaser.GameObjects.Text[] = [];
     this.lastChips.push({ bg: clusterBg, text: clusterValueText, label: clusterLabel, config: clusterConfig, clusterTexts });
 
     // Bottom row: separator line and TOTAL
     const separatorY = boxY + 34;
-    this.add.rectangle(boxX, separatorY, boxWidth - 20, 1, 0x222222, 0.8)
+    this.add.rectangle(boxX, separatorY, boxWidth - 20, 1, 0x3a2b33, 0.8)
       .setOrigin(0.5, 0.5).setDepth(6);
 
     // Bottom row: CLEARED (left), multipliers (middle), TOTAL (right)
     const bottomConfigs = [
-      { id: 'cleared', icon: '#', label: 'CLEARED', color: 0x8a8a8a, width: 92 },
-      { id: 'color', icon: 'C', label: 'COLOR', color: 0x00BFFF, width: 98 },
-      { id: 'lineMult', icon: 'L', label: 'LINE', color: 0xFFA500, width: 108 },
-      { id: 'total', icon: 'T', label: 'TOTAL', color: 0x7CFC00, width: 180 },
+      { id: 'cleared', icon: '#', label: 'CLEARED', color: 0x8f7764, width: 92 },
+      { id: 'color', icon: 'C', label: 'COLOR', color: 0x7db0be, width: 98 },
+      { id: 'lineMult', icon: 'L', label: 'LINE', color: 0xc5965d, width: 108 },
+      { id: 'total', icon: 'T', label: 'TOTAL', color: 0xc76f5f, width: 180 },
     ];
     const bottomContentWidth = bottomConfigs.reduce((sum, c) => sum + c.width, 0);
     const bottomTotalGap = chipGap * (bottomConfigs.length - 1);
@@ -668,7 +668,7 @@ export class GameScene extends Phaser.Scene {
 
     let bottomChipX = bottomStartX;
     for (const config of bottomConfigs) {
-      const bg = this.add.rectangle(bottomChipX + config.width / 2, bottomChipY, config.width, 20, config.id === 'total' ? 0x102314 : 0x141414, config.id === 'total' ? 0.95 : 0.9)
+      const bg = this.add.rectangle(bottomChipX + config.width / 2, bottomChipY, config.width, 20, config.id === 'total' ? 0x241617 : 0x1a141c, config.id === 'total' ? 0.95 : 0.9)
         .setOrigin(0.5, 0.5).setDepth(6).setStrokeStyle(config.id === 'total' ? 2 : 1, config.color, config.id === 'total' ? 0.95 : 0.8);
 
       this.add.rectangle(bottomChipX + 14, bottomChipY, 14, 14, config.color, config.id === 'total' ? 0.25 : 0.22)
@@ -676,13 +676,13 @@ export class GameScene extends Phaser.Scene {
       this.add.text(bottomChipX + 14, bottomChipY, config.icon, {
         fontSize: '8px',
         fontFamily: '"Press Start 2P", monospace',
-        color: config.id === 'total' ? '#E8FFE8' : '#FFFFFF',
+        color: config.id === 'total' ? '#f4ded5' : '#f0e6d8',
       }).setOrigin(0.5, 0.5).setDepth(8);
 
       const labelText = this.add.text(bottomChipX + 25, bottomChipY, config.label, {
         fontSize: config.id === 'total' ? '9px' : '8px',
         fontFamily: '"Press Start 2P", monospace',
-        color: config.id === 'total' ? '#CFFFD3' : '#D2D2D2',
+        color: config.id === 'total' ? '#ddb6aa' : '#b8a796',
         fontStyle: config.id === 'total' ? 'bold' : undefined,
         align: 'left',
         padding: { left: 0, right: 0, top: 0, bottom: 0 }
@@ -691,7 +691,7 @@ export class GameScene extends Phaser.Scene {
       const valueText = this.add.text(bottomChipX + config.width - 10, bottomChipY, '', {
         fontSize: config.id === 'total' ? '12px' : '9px',
         fontFamily: '"Press Start 2P", monospace',
-        color: config.id === 'total' ? '#E8FFE8' : '#FFFFFF',
+        color: config.id === 'total' ? '#f7e1d5' : '#efe1d3',
         fontStyle: config.id === 'total' ? 'bold' : undefined,
         align: 'right',
         padding: { left: 0, right: 0, top: 0, bottom: 0 }
@@ -713,12 +713,12 @@ export class GameScene extends Phaser.Scene {
     const gameOverY = Math.floor(112 + (BOARD_HEIGHT * BLOCK_SIZE) / 2);
 
     this.gameOverBg = this.add.rectangle(gameOverX, gameOverY, 600, 160, 0x000000, 0.9)
-      .setVisible(false).setDepth(9).setStrokeStyle(4, 0xFF6347);
+      .setVisible(false).setDepth(9).setStrokeStyle(4, 0xc66a5c);
 
     this.gameOverText = this.add.text(gameOverX, gameOverY, 'GAME OVER', {
       fontSize: '24px',
       fontFamily: '"Press Start 2P", monospace',
-      color: '#FF6347',
+      color: '#c66a5c',
       align: 'center',
     }).setOrigin(0.5).setShadow(4, 4, '#000', 0, true, true).setVisible(false).setDepth(10);
 
@@ -732,6 +732,45 @@ export class GameScene extends Phaser.Scene {
       })
       this.devPanel.bindKey()
     }
+  }
+
+  private renderBoardSigils(boardOffsetX: number, boardOffsetY: number): void {
+    const boardWidthPx = BOARD_WIDTH * BLOCK_SIZE
+    const boardHeightPx = BOARD_HEIGHT * BLOCK_SIZE
+    const right = boardOffsetX + boardWidthPx
+    const bottom = boardOffsetY + boardHeightPx
+    const sigilColor = 0x7a4248
+    const emberDot = 0xcfb18a
+    const pad = 7
+    const arm = 12
+
+    this.graphics.lineStyle(1, sigilColor, 0.52)
+
+    this.graphics.moveTo(boardOffsetX - pad, boardOffsetY + arm)
+      .lineTo(boardOffsetX - pad, boardOffsetY - pad)
+      .lineTo(boardOffsetX + arm, boardOffsetY - pad)
+      .stroke()
+
+    this.graphics.moveTo(right - arm, boardOffsetY - pad)
+      .lineTo(right + pad, boardOffsetY - pad)
+      .lineTo(right + pad, boardOffsetY + arm)
+      .stroke()
+
+    this.graphics.moveTo(right + pad, bottom - arm)
+      .lineTo(right + pad, bottom + pad)
+      .lineTo(right - arm, bottom + pad)
+      .stroke()
+
+    this.graphics.moveTo(boardOffsetX + arm, bottom + pad)
+      .lineTo(boardOffsetX - pad, bottom + pad)
+      .lineTo(boardOffsetX - pad, bottom - arm)
+      .stroke()
+
+    this.graphics.fillStyle(emberDot, 0.16)
+    this.graphics.fillCircle(boardOffsetX - pad, boardOffsetY - pad, 2)
+    this.graphics.fillCircle(right + pad, boardOffsetY - pad, 2)
+    this.graphics.fillCircle(right + pad, bottom + pad, 2)
+    this.graphics.fillCircle(boardOffsetX - pad, bottom + pad, 2)
   }
 
   private updateVexAmbienceAudio(nowMs: number): void {
@@ -1135,7 +1174,7 @@ export class GameScene extends Phaser.Scene {
       this.graphics.fillStyle(themeColor, rowAlpha)
       this.graphics.fillRect(boardOffsetX, rowY, boardWidthPx, BLOCK_SIZE)
 
-      this.graphics.fillStyle(0xffffff, Math.min(0.42, 0.22 + linesCleared * 0.05) * pulse)
+      this.graphics.fillStyle(0xf0dfcf, Math.min(0.42, 0.22 + linesCleared * 0.05) * pulse)
       this.graphics.fillRect(sweepX, rowY, sweepWidth, BLOCK_SIZE)
 
       this.graphics.lineStyle(2, themeColor, Math.min(0.9, 0.45 + linesCleared * 0.08) * pulse)
@@ -1170,7 +1209,7 @@ export class GameScene extends Phaser.Scene {
     this.lastGhostVisible = ghostVisible
 
     // Draw background panel for board
-    this.graphics.fillStyle(0x0a0a0a, 0.8);
+    this.graphics.fillStyle(0x110d15, 0.85);
     this.graphics.fillRect(boardOffsetX, boardOffsetY, BOARD_WIDTH * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
 
     // Draw board cells
@@ -1256,11 +1295,11 @@ export class GameScene extends Phaser.Scene {
         const barWidth = Math.max(24, (maxX - minX + 1) * BLOCK_SIZE)
         const fillWidth = Math.max(0, (barWidth - 2) * ratio)
 
-        const barColor = ratio > 0.4 ? 0x32cd32 : ratio > 0.2 ? 0xffa500 : 0xff3b30
+        const barColor = ratio > 0.4 ? 0x79a86b : ratio > 0.2 ? 0xc49a5c : 0xbb5c54
 
-        this.graphics.fillStyle(0x111111, 0.85)
+        this.graphics.fillStyle(0x1a141e, 0.85)
         this.graphics.fillRect(barX, barY, barWidth, 6)
-        this.graphics.lineStyle(1, 0xffffff, 0.45)
+        this.graphics.lineStyle(1, 0xd9c6b4, 0.45)
         this.graphics.strokeRect(barX, barY, barWidth, 6)
         this.graphics.fillStyle(barColor, 0.95)
         this.graphics.fillRect(barX + 1, barY + 1, fillWidth, 4)
@@ -1332,14 +1371,16 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    this.renderBoardSigils(boardOffsetX, boardOffsetY)
+
     // Draw board border with a subtle glow
-    this.graphics.lineStyle(2, 0x00BFFF, 0.5); // Cyan glow
+    this.graphics.lineStyle(2, 0x7a4248, 0.52);
     this.graphics.strokeRect(boardOffsetX - 1, boardOffsetY - 1, BOARD_WIDTH * BLOCK_SIZE + 2, BOARD_HEIGHT * BLOCK_SIZE + 2);
-    this.graphics.lineStyle(1, 0xFFFFFF, 0.8);
+    this.graphics.lineStyle(1, 0xd6c1ad, 0.72);
     this.graphics.strokeRect(boardOffsetX, boardOffsetY, BOARD_WIDTH * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
 
     // Draw subtle grid lines
-    this.graphics.lineStyle(1, 0x333333, 0.3);
+    this.graphics.lineStyle(1, 0x3c2c34, 0.34);
     const gridBottomY = severeFog ? boardOffsetY + Math.max(0, fogTopLocalY) : boardOffsetY + BOARD_HEIGHT * BLOCK_SIZE;
     for (let x = 1; x < BOARD_WIDTH; x++) {
       this.graphics.moveTo(boardOffsetX + x * BLOCK_SIZE, boardOffsetY)
@@ -1503,7 +1544,7 @@ export class GameScene extends Phaser.Scene {
               clusterChip.text.setText('');
             } else {
               clusterChip.text.setText('0');
-              clusterChip.text.setColor('#FFFFFF');
+              clusterChip.text.setColor('#efe1d3');
             }
           }
           // Update other chips
@@ -1516,21 +1557,21 @@ export class GameScene extends Phaser.Scene {
           // Activate chip backgrounds
           for (const chip of this.lastChips) {
             if (chip.config.id === 'total') {
-              chip.bg.setFillStyle(0x204d2b, 0.95);
-              chip.text.setColor('#E8FFE8');
-              chip.label.setColor('#CFFFD3');
+              chip.bg.setFillStyle(0x3a2120, 0.95);
+              chip.text.setColor('#f9ded2');
+              chip.label.setColor('#ddb6aa');
               chip.label.setVisible(true);
             } else if (chip.config.id === 'clusters') {
               chip.bg.setFillStyle(chip.config.color, 0.16);
-              chip.text.setColor('#FFFFFF');
-              chip.label.setColor('#D6D6D6');
+              chip.text.setColor('#efe1d3');
+              chip.label.setColor('#cab7a7');
               chip.label.setVisible(false);
               // Hide clusterTexts when not showing score
               if (chip.clusterTexts) for (const t of chip.clusterTexts) t.setVisible(true);
             } else {
               chip.bg.setFillStyle(chip.config.color, 0.16);
-              chip.text.setColor('#FFFFFF');
-              chip.label.setColor('#D6D6D6');
+              chip.text.setColor('#efe1d3');
+              chip.label.setColor('#cab7a7');
               chip.label.setVisible(false);
             }
           }
@@ -1580,7 +1621,7 @@ export class GameScene extends Phaser.Scene {
 
           const callout = this.getLineClearCallout(linesCleared)
           if (callout) {
-            const mutedCalloutColor = this.colorToHexString(this.blendColors(clearThemeColor, 0xd6dce3, 0.72))
+            const mutedCalloutColor = this.colorToHexString(this.blendColors(clearThemeColor, 0xd3c0af, 0.72))
             this.showFloatingText(px, py - 22, callout, mutedCalloutColor, 0.9)
           }
 
@@ -1790,25 +1831,25 @@ export class GameScene extends Phaser.Scene {
               chip.text.setText('');
             }
             if (chip.config.id === 'total') {
-              chip.bg.setFillStyle(0x102314, 0.95);
-              chip.label.setColor('#CFFFD3');
+              chip.bg.setFillStyle(0x241617, 0.95);
+              chip.label.setColor('#ddb6aa');
               chip.label.setVisible(true);
             } else if (chip.config.id === 'clusters') {
-              chip.bg.setFillStyle(0x141414, 0.9);
-              chip.label.setColor('#D2D2D2');
+              chip.bg.setFillStyle(0x1a141c, 0.9);
+              chip.label.setColor('#b8a796');
               chip.label.setVisible(true);
               // Hide clusterTexts when idle
               if (chip.clusterTexts) for (const t of chip.clusterTexts) t.setVisible(false);
             } else if (chip.config.id === 'color' || chip.config.id === 'lineMult') {
-              chip.bg.setFillStyle(0x141414, 0.9);
-              chip.text.setColor('#FFFFFF');
+              chip.bg.setFillStyle(0x1a141c, 0.9);
+              chip.text.setColor('#efe1d3');
               const multValue = chip.config.id === 'color' ? this.lastColorMult : this.lastLineMult
               chip.text.setText(this.formatMultiplierValue(multValue));
-              chip.label.setColor('#D2D2D2');
+              chip.label.setColor('#b8a796');
               chip.label.setVisible(false);
             } else {
-              chip.bg.setFillStyle(0x141414, 0.9);
-              chip.label.setColor('#D2D2D2');
+              chip.bg.setFillStyle(0x1a141c, 0.9);
+              chip.label.setColor('#b8a796');
               chip.label.setVisible(true);
             }
           }
@@ -1833,8 +1874,8 @@ export class GameScene extends Phaser.Scene {
     // Visual flash before the overlay
     const boardCenterX = 48 + (BOARD_WIDTH * BLOCK_SIZE) / 2
     const boardCenterY = 112 + (BOARD_HEIGHT * BLOCK_SIZE) / 2
-    this.showFloatingText(boardCenterX, boardCenterY, `SEAL ${this.currentLevel} BROKEN!`, '#32CD32', 1.2)
-    this.cameras.main.flash(300, 50, 255, 50, false)
+    this.showFloatingText(boardCenterX, boardCenterY, `SEAL ${this.currentLevel} BROKEN!`, '#cfa36b', 1.2)
+    this.cameras.main.flash(300, 190, 112, 91, false)
 
     // Small delay so the flash is visible before overlay appears
     this.time.delayedCall(400, () => {
@@ -1879,7 +1920,7 @@ export class GameScene extends Phaser.Scene {
     this.gameState = 'GAMEOVER'
     this.gameOverBg.setVisible(true)
     this.gameOverText.setText('RESOLVE DEPLETED!')
-    this.gameOverText.setStyle({ color: '#FF6347' })
+    this.gameOverText.setStyle({ color: '#c66a5c' })
     this.gameOverText.setVisible(true)
     audioManager.playSfx('fail')
   }
@@ -2018,7 +2059,7 @@ export class GameScene extends Phaser.Scene {
         this.gameState = 'GAMEOVER';
         this.gameOverBg.setVisible(true);
         this.gameOverText.setText('GARBAGE OVERFLOW!');
-        this.gameOverText.setStyle({ color: '#FF6347' });
+        this.gameOverText.setStyle({ color: '#c66a5c' });
         this.gameOverText.setVisible(true);
         audioManager.playSfx('fail')
         break;
@@ -2046,7 +2087,7 @@ export class GameScene extends Phaser.Scene {
       const vy = -8 - Math.random() * 6;     // upward velocity
       
       // Brown/earth colors for rocks
-      const rockColors = [0x8B4513, 0x654321, 0x704214, 0x6F4E37, 0x704214];
+      const rockColors = [0x7a4f32, 0x5c3b28, 0x6b4630, 0x71503a, 0x8a5b3e];
       const color = rockColors[Math.floor(Math.random() * rockColors.length)];
       
       this.particlePool.push({

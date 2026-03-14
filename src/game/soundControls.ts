@@ -16,13 +16,13 @@ const STYLE = `
   font-family: "Press Start 2P", monospace;
   font-size: 8px;
   letter-spacing: 1px;
-  border: 1px solid #2f5f5f;
-  background: rgba(9, 20, 26, 0.95);
-  color: #9ce9ff;
+  border: 1px solid #5a3b43;
+  background: rgba(18, 13, 20, 0.95);
+  color: #d6c1ad;
   padding: 7px 10px;
   border-radius: 6px;
   cursor: pointer;
-  box-shadow: 0 0 14px rgba(0, 191, 255, 0.2);
+  box-shadow: 0 0 14px rgba(122, 66, 72, 0.24);
 }
 
 #${PANEL_ID} {
@@ -31,12 +31,12 @@ const STYLE = `
   top: 44px;
   width: min(280px, calc(100vw - 24px));
   z-index: 2199;
-  background: rgba(7, 12, 16, 0.96);
-  border: 1px solid #2f5f5f;
+  background: rgba(14, 10, 18, 0.96);
+  border: 1px solid #5a3b43;
   border-radius: 8px;
   padding: 12px;
   font-family: "Press Start 2P", monospace;
-  box-shadow: 0 0 18px rgba(0, 191, 255, 0.18);
+  box-shadow: 0 0 18px rgba(122, 66, 72, 0.2);
   display: none;
 }
 
@@ -45,7 +45,7 @@ const STYLE = `
 }
 
 #${PANEL_ID} .sound-title {
-  color: #9ce9ff;
+  color: #d6c1ad;
   font-size: 9px;
   letter-spacing: 1px;
   margin-bottom: 8px;
@@ -64,17 +64,17 @@ const STYLE = `
 }
 
 #${PANEL_ID} .sound-row label {
-  color: #d9f8ff;
+  color: #e7d7c7;
   font-size: 7px;
 }
 
 #${PANEL_ID} .sound-row input[type="range"] {
   width: 100%;
-  accent-color: #00bfff;
+  accent-color: #c48f63;
 }
 
 #${PANEL_ID} .sound-value {
-  color: #89d9f3;
+  color: #bfa58f;
   font-size: 7px;
   text-align: right;
 }
@@ -83,17 +83,17 @@ const STYLE = `
   font-family: "Press Start 2P", monospace;
   font-size: 6px;
   padding: 5px 4px;
-  border: 1px solid #325c66;
-  background: rgba(9, 28, 34, 0.9);
-  color: #9ce9ff;
+  border: 1px solid #5a434c;
+  background: rgba(24, 17, 27, 0.9);
+  color: #d6c1ad;
   border-radius: 4px;
   cursor: pointer;
 }
 
 #${PANEL_ID} .sound-chan-btn.muted {
-  border-color: #8f2f2f;
-  background: rgba(30, 8, 8, 0.9);
-  color: #ffc7c7;
+  border-color: #8b4a46;
+  background: rgba(40, 14, 17, 0.9);
+  color: #efb8b0;
 }
 
 #${PANEL_ID} .sound-actions {
@@ -108,22 +108,22 @@ const STYLE = `
   font-family: "Press Start 2P", monospace;
   font-size: 7px;
   padding: 7px 6px;
-  border: 1px solid #335764;
-  background: rgba(10, 24, 30, 0.92);
-  color: #c6efff;
+  border: 1px solid #5a434c;
+  background: rgba(22, 16, 25, 0.92);
+  color: #ddc7b1;
   border-radius: 4px;
   cursor: pointer;
 }
 
 #${PANEL_ID} .sound-btn.muted {
-  border-color: #8f2f2f;
-  color: #ffc6c6;
-  background: rgba(28, 8, 8, 0.92);
+  border-color: #8b4a46;
+  color: #efb8b0;
+  background: rgba(38, 13, 16, 0.92);
 }
 
 #${PANEL_ID} .sound-help {
   margin-top: 8px;
-  color: #6ca2b3;
+  color: #9d8575;
   font-size: 6px;
 }
 
