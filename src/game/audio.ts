@@ -578,6 +578,11 @@ export class AudioManager {
     this.sfxGain = sfx
     this.vexGain = vex
 
+    // Expose for debugging/inspection in browser console.
+    if (typeof window !== 'undefined') {
+      ;(window as any).__vextrisAudioContext = ctx
+    }
+
     return ctx
   }
 
