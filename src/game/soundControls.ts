@@ -176,6 +176,7 @@ export class SoundControls {
       ${this.sliderRow('sfx', 'SFX')}
       ${this.sliderRow('vex', 'VEX')}
       <div class="sound-actions">
+        <button type="button" class="sound-btn" data-sound-action="test">TEST</button>
         <button type="button" class="sound-btn" data-sound-action="mute">MUTE</button>
         <button type="button" class="sound-btn" data-sound-action="reset">RESET</button>
         <button type="button" class="sound-btn" data-sound-action="close">CLOSE</button>
@@ -227,6 +228,13 @@ export class SoundControls {
     resetButton.addEventListener('click', () => {
       audioManager.resetSettings()
       this.refresh()
+    })
+
+    const testButton = this.panel.querySelector<HTMLButtonElement>('[data-sound-action="test"]')!
+    testButton.addEventListener('click', () => {
+      // Play a short Vex-style sound to verify audio output
+      audioManager.playSfx('tremor', { rank: 10 })
+      setTimeout(() => audioManager.playSfx('blackout', { rank: 10 }), 240)
     })
 
     const channels: VolumeChannel[] = ['master', 'music', 'sfx', 'vex']
