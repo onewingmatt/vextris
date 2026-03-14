@@ -753,8 +753,12 @@ export class GameScene extends Phaser.Scene {
       align: 'center',
     }).setOrigin(0.5).setShadow(4, 4, '#000', 0, true, true).setVisible(false).setDepth(10);
 
-    // Dev panel (backtick to toggle) is available only in development builds
-    const isDevBuild = Boolean((import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV)
+    // Dev panel (backtick to toggle) is available in dev builds or via ?dev=1.
+    const urlParams = new URLSearchParams(window.location.search)
+    const isDevBuild =
+      Boolean((import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV) ||
+      urlParams.get('dev') === '1'
+
     if (isDevBuild) {
       this.devPanel = new DevPanel(this.activeVexes, (vexes) => {
         // Keep scene state authoritative even if the panel ever holds a stale

@@ -159,6 +159,7 @@ export class AudioManager {
   }
 
   startBgm(url: string): void {
+    this.unlock()
     this.stopBgm()
     this.init()
 
@@ -606,10 +607,10 @@ export class AudioManager {
     this.stopBgm()
 
     const ctx = this.context
-    const masterGain = ctx.createGain()
-    masterGain.gain.value = 0.24
-    masterGain.connect(this.musicGain)
-    this.bgmSynthNodes.push(masterGain)
+    // Push the synth output through the existing music gain node (controlled by the UI sliders).
+    // This avoids additional attenuation and makes the BGM audible by default.
+    const destination = this.musicGain
+    if (!destination) return
 
     const baseFreq = 98
     const intervals = [0, 3, 7, 10]
@@ -623,11 +624,11 @@ export class AudioManager {
       osc.frequency.setValueAtTime(freq, time)
 
       gain.gain.setValueAtTime(0.0001, time)
-      gain.gain.linearRampToValueAtTime(0.05, time + 0.12)
-      gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.46)
+      gain.gain.linearRampToValueAtTime(0.18, time + 0.12)
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.56)
 
       osc.connect(gain)
-      gain.connect(masterGain)
+      gain.connect(destination)
 
       osc.start(time)
       osc.stop(time + 0.52)
