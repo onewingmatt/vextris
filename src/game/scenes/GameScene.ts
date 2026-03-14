@@ -41,7 +41,7 @@ import { audioManager } from '../audio'
 import { ensureSoundControls } from '../soundControls'
 
 export class GameScene extends Phaser.Scene {
-  private static readonly BGM_URL = '/Hex%20Cabin%20Riddles.mp3'
+  private static readonly BGM_URL = 'Hex%20Cabin%20Riddles.mp3'
 
   private board: Cell[][] = []
   private currentPiece: Piece | null = null

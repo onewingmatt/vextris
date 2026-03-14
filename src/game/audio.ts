@@ -105,12 +105,12 @@ const SYNTH_EVENT_GAIN: Record<SfxId, number> = {
 
 // Selected high-impact cues now prefer file assets, with synth fallback.
 const SAMPLE_SFX_URL: Partial<Record<SfxId, string>> = {
-  uiClick: '/audio/sfx/ui-click.wav',
-  shopOpen: '/audio/sfx/shop-open.wav',
-  lineClear: '/audio/sfx/line-clear.wav',
-  levelClear: '/audio/sfx/level-clear.wav',
-  fail: '/audio/sfx/fail.wav',
-  risingImpact: '/audio/sfx/rising-impact.wav',
+  uiClick: 'audio/sfx/ui-click.wav',
+  shopOpen: 'audio/sfx/shop-open.wav',
+  lineClear: 'audio/sfx/line-clear.wav',
+  levelClear: 'audio/sfx/level-clear.wav',
+  fail: 'audio/sfx/fail.wav',
+  risingImpact: 'audio/sfx/rising-impact.wav',
 }
 
 const SAMPLE_EVENT_GAIN: Partial<Record<SfxId, number>> = {
