@@ -40,7 +40,7 @@ type SfxOptions = {
 const STORAGE_KEY = 'vextris.audio.v1'
 const DEFAULT_SETTINGS: AudioSettings = {
   master: 0.85,
-  music: 0.44,
+  music: 0.35,
   sfx: 0.72,
   vex: 0.80,
   muted: false,

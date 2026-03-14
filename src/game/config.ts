@@ -123,11 +123,12 @@ export interface LevelParams {
 
 /** Level data for levels 1–10, clamped above 10. */
 const LEVEL_TABLE: LevelParams[] = [
-  { level: 1, targetScore: 800, resolveMax: 150 },
-  { level: 2, targetScore: 1000, resolveMax: 170 },
-  { level: 3, targetScore: 1300, resolveMax: 185 },
-  { level: 4, targetScore: 1800, resolveMax: 195 },
-  { level: 5, targetScore: 3000, resolveMax: 205 },
+  // Early levels are softened further to let players reach the core Vex mechanics.
+  { level: 1, targetScore: 500, resolveMax: 150 },
+  { level: 2, targetScore: 700, resolveMax: 170 },
+  { level: 3, targetScore: 1000, resolveMax: 185 },
+  { level: 4, targetScore: 1400, resolveMax: 195 },
+  { level: 5, targetScore: 2200, resolveMax: 205 },
   { level: 6, targetScore: 6075, resolveMax: 195 },
   { level: 7, targetScore: 9110, resolveMax: 210 },
   { level: 8, targetScore: 13665, resolveMax: 225 },

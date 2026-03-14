@@ -2515,6 +2515,24 @@ export class GameScene extends Phaser.Scene {
       };
     }
 
+    const btnRiteLore = document.getElementById('btn-rite-lore');
+    if (btnRiteLore) {
+      btnRiteLore.onclick = () => {
+        document.getElementById('main-menu')?.classList.add('hidden');
+        document.getElementById('howto-screen')?.classList.remove('hidden');
+        audioManager.playSfx('uiClick');
+      };
+    }
+
+    const btnCloseHowto = document.getElementById('btn-close-howto');
+    if (btnCloseHowto) {
+      btnCloseHowto.onclick = () => {
+        document.getElementById('howto-screen')?.classList.add('hidden');
+        document.getElementById('main-menu')?.classList.remove('hidden');
+        audioManager.playSfx('uiClick');
+      };
+    }
+
     const btnResume = document.getElementById('btn-resume-rite');
     if (btnResume) {
       btnResume.onclick = () => this.togglePause();
