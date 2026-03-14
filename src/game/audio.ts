@@ -39,10 +39,10 @@ type SfxOptions = {
 
 const STORAGE_KEY = 'vextris.audio.v1'
 const DEFAULT_SETTINGS: AudioSettings = {
-  master: 0.82,
-  music: 0.38,
+  master: 0.85,
+  music: 0.44,
   sfx: 0.72,
-  vex: 0.60,
+  vex: 0.80,
   muted: false,
   musicMuted: false,
   sfxMuted: false,
@@ -94,15 +94,15 @@ const SYNTH_EVENT_GAIN: Record<SfxId, number> = {
   shopOpen: 0.64,
   uiClick: 0.42,
 
-  // Vex-related cues are intentionally softer/more atmospheric than core SFX.
-  quicksand: 0.56,
-  amnesia: 0.52,
-  corruption: 0.58,
-  risingWarn: 0.44,
-  risingImpact: 0.68,
-  blackout: 0.52,
-  fog: 0.45,
-  tremor: 0.56,
+  // Vex-related cues are louder by default so they are audible during gameplay.
+  quicksand: 1.0,
+  amnesia: 1.0,
+  corruption: 1.0,
+  risingWarn: 1.0,
+  risingImpact: 1.0,
+  blackout: 1.0,
+  fog: 1.0,
+  tremor: 1.0,
 }
 
 // Selected high-impact cues now prefer file assets, with synth fallback.
@@ -133,6 +133,8 @@ export class AudioManager {
   private vexGain: GainNode | null = null
   private bgmAudio?: HTMLAudioElement
   private bgmSource?: MediaElementAudioSourceNode
+  private bgmSynthNodes: AudioNode[] = []
+  private bgmSynthInterval?: number
   private lastPlayedAt = new Map<SfxId, number>()
   private sampleBuffers = new Map<SfxId, AudioBuffer>()
   private sampleLoadPromises = new Map<SfxId, Promise<void>>()
@@ -157,12 +159,22 @@ export class AudioManager {
   }
 
   startBgm(url: string): void {
+    this.stopBgm()
     this.init()
+
+    if (url === 'synth') {
+      this.startBgmSynth()
+      return
+    }
 
     if (!this.bgmAudio) {
       const audio = new Audio(url)
       audio.loop = true
       audio.preload = 'auto'
+      audio.addEventListener('error', () => {
+        // Fallback to a simple synth-based BGM when the file is missing or fails to load.
+        this.startBgmSynth()
+      })
       this.bgmAudio = audio
       this.attachBgmToGraph(audio)
     }
@@ -170,14 +182,35 @@ export class AudioManager {
     this.applySettingsToBgm()
     const playPromise = this.bgmAudio.play()
     if (playPromise && typeof playPromise.then === 'function') {
-      void playPromise.catch(() => undefined)
+      void playPromise.catch(() => {
+        this.startBgmSynth()
+      })
     }
   }
 
   stopBgm(): void {
-    if (!this.bgmAudio) return
-    this.bgmAudio.pause()
-    this.bgmAudio.currentTime = 0
+    if (this.bgmAudio) {
+      this.bgmAudio.pause()
+      this.bgmAudio.currentTime = 0
+      this.bgmAudio = undefined
+      this.bgmSource = undefined
+    }
+
+    if (this.bgmSynthInterval !== undefined) {
+      clearInterval(this.bgmSynthInterval)
+      this.bgmSynthInterval = undefined
+    }
+    for (const node of this.bgmSynthNodes) {
+      try {
+        if (typeof (node as any).stop === 'function') {
+          ;(node as any).stop()
+        }
+        node.disconnect()
+      } catch {
+        // ignore
+      }
+    }
+    this.bgmSynthNodes = []
   }
 
   setVolume(channel: AudioChannel, value: number): void {
@@ -560,6 +593,52 @@ export class AudioManager {
     } catch {
       this.bgmSource = undefined
     }
+  }
+
+  private startBgmSynth(): void {
+    if (!this.context || !this.musicGain) return
+
+    this.stopBgm()
+
+    const ctx = this.context
+    const masterGain = ctx.createGain()
+    masterGain.gain.value = 0.24
+    masterGain.connect(this.musicGain)
+    this.bgmSynthNodes.push(masterGain)
+
+    const baseFreq = 98
+    const intervals = [0, 3, 7, 10]
+    const stepMs = 900
+
+    const scheduleNote = (time: number, intervalIndex: number) => {
+      const freq = baseFreq * Math.pow(2, intervals[intervalIndex] / 12)
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, time)
+
+      gain.gain.setValueAtTime(0.0001, time)
+      gain.gain.linearRampToValueAtTime(0.05, time + 0.12)
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.46)
+
+      osc.connect(gain)
+      gain.connect(masterGain)
+
+      osc.start(time)
+      osc.stop(time + 0.52)
+
+      this.bgmSynthNodes.push(osc, gain)
+    }
+
+    const loop = () => {
+      const now = ctx.currentTime
+      for (let i = 0; i < intervals.length; i++) {
+        scheduleNote(now + i * (stepMs / 1000), i)
+      }
+    }
+
+    loop()
+    this.bgmSynthInterval = window.setInterval(loop, stepMs * intervals.length)
   }
 
   private bindUnlockListeners(): void {

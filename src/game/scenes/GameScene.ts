@@ -41,7 +41,8 @@ import { audioManager } from '../audio'
 import { ensureSoundControls } from '../soundControls'
 
 export class GameScene extends Phaser.Scene {
-  private static readonly BGM_URL = 'Hex%20Cabin%20Riddles.mp3'
+  // Use a simple built-in synth-based BGM so the site works without needing external audio assets
+  private static readonly BGM_URL = 'synth'
 
   private board: Cell[][] = []
   private currentPiece: Piece | null = null
