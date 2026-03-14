@@ -31,17 +31,18 @@ export const DAS_DELAY = 16 // Delayed Auto Shift
 export const ARR_DELAY = 6 // Auto Repeat Rate
 export const SOFT_DROP_DELAY = 0 // Immediate
 
-// Colors: occult-forward palette that keeps all piece hues clearly distinct
+// Colors: occult-forward palette that keeps all piece hues clearly distinct.
+// Piece hues are tuned slightly brighter/warmer for readability against the ritual UI shell.
 export const COLORS = {
   background: 0x07060b, // Near-black violet stone
   empty: 0x19141f, // Ritual slate
-  blockI: 0x4eb7cf, // Ether cyan
-  blockO: 0xcfae58, // Relic gold
-  blockT: 0x9b71c8, // Hex violet
-  blockS: 0x69a15a, // Moss green
-  blockZ: 0xbe5a50, // Blood clay
-  blockJ: 0x4f67b2, // Dusk indigo
-  blockL: 0xce8648, // Ember amber
+  blockI: 0x55c3d8, // Ether cyan
+  blockO: 0xd8b764, // Relic gold
+  blockT: 0xa57cd1, // Hex violet
+  blockS: 0x73ad63, // Moss green
+  blockZ: 0xc76559, // Blood clay
+  blockJ: 0x5a74bd, // Dusk indigo
+  blockL: 0xd79456, // Ember amber
 }
 
 // Pieces

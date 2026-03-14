@@ -163,12 +163,53 @@ export class GameScene extends Phaser.Scene {
   private getQuicksandGravityScale(rank: VexRank | 0): number {
     if (rank <= 0) return 1
 
-    // Quicksand should feel consistently "fast" without escalating every rank.
-    return 0.78
+    // Lower scale => faster gravity. Keep progression meaningful without making
+    // high ranks instantly unplayable on low gravity levels.
+    const scaleByRank: Record<VexRank, number> = {
+      1: 0.9,
+      2: 0.86,
+      3: 0.82,
+      4: 0.78,
+      5: 0.74,
+      6: 0.7,
+      7: 0.66,
+      8: 0.62,
+      9: 0.58,
+      10: 0.54,
+    }
+
+    return scaleByRank[rank as VexRank]
   }
 
   private getAmnesiaRank(): VexRank | 0 {
     return this.getActiveVexRank('amnesia')
+  }
+
+  private getAmnesiaLevelScale(): number {
+    const normalizedLevel = Math.max(0, Math.min(1, (this.currentLevel - 1) / 9))
+    // Early seals are gentler; later seals realize the full curse.
+    return 0.6 + normalizedLevel * 0.4
+  }
+
+  private getAmnesiaIntensity(rank: VexRank | 0): number {
+    if (rank <= 0) return 0
+    return Math.max(0, Math.min(10, rank * this.getAmnesiaLevelScale()))
+  }
+
+  private sampleAmnesiaCurve(values: number[], intensity: number): number {
+    const clamped = Math.max(0, Math.min(10, intensity))
+    const low = Math.floor(clamped)
+    const high = Math.min(10, low + 1)
+    const blend = clamped - low
+    return values[low] + (values[high] - values[low]) * blend
+  }
+
+  private shouldHideNextPreview(amnesiaIntensity: number): boolean {
+    return amnesiaIntensity >= 1
+  }
+
+  private shouldHideHoldPreview(amnesiaIntensity: number): boolean {
+    return amnesiaIntensity >= 2.25
   }
 
   private blendColorToGray(color: number, amount: number): number {
@@ -229,29 +270,29 @@ export class GameScene extends Phaser.Scene {
     return null
   }
 
-  private getAmnesiaPieceDesaturation(rank: VexRank | 0): number {
+  private getAmnesiaPieceDesaturation(amnesiaIntensity: number): number {
     const values: number[] = [0, 0, 0, 0.55, 0.7, 0.82, 0.9, 0.95, 0.98, 1, 1]
-    return values[Math.max(0, Math.min(10, rank))]
+    return this.sampleAmnesiaCurve(values, amnesiaIntensity)
   }
 
-  private getAmnesiaBoardDesaturation(rank: VexRank | 0): number {
+  private getAmnesiaBoardDesaturation(amnesiaIntensity: number): number {
     const values: number[] = [0, 0, 0, 0, 0, 0.15, 0.3, 0.45, 0.6, 0.8, 1]
-    return values[Math.max(0, Math.min(10, rank))]
+    return this.sampleAmnesiaCurve(values, amnesiaIntensity)
   }
 
-  private getAmnesiaGhostVisibilityChance(rank: VexRank | 0): number {
+  private getAmnesiaGhostVisibilityChance(amnesiaIntensity: number): number {
     const values: number[] = [1, 0.95, 0.9, 0.82, 0.72, 0.6, 0.48, 0.36, 0.24, 0.14, 0.08]
-    return values[Math.max(0, Math.min(10, rank))]
+    return this.sampleAmnesiaCurve(values, amnesiaIntensity)
   }
 
-  private getAmnesiaGhostFlickerWindowMs(rank: VexRank | 0): number {
+  private getAmnesiaGhostFlickerWindowMs(amnesiaIntensity: number): number {
     const values: number[] = [9999, 260, 220, 190, 160, 140, 120, 105, 90, 80, 70]
-    return values[Math.max(0, Math.min(10, rank))]
+    return this.sampleAmnesiaCurve(values, amnesiaIntensity)
   }
 
-  private getAmnesiaGhostAlpha(rank: VexRank | 0): number {
+  private getAmnesiaGhostAlpha(amnesiaIntensity: number): number {
     const values: number[] = [0.2, 0.18, 0.17, 0.16, 0.14, 0.12, 0.1, 0.08, 0.07, 0.06, 0.05]
-    return values[Math.max(0, Math.min(10, rank))]
+    return this.sampleAmnesiaCurve(values, amnesiaIntensity)
   }
 
   private rotatePieceDataClockwise(shape: number[][], colors: number[][]): { shape: number[][]; colors: number[][] } {
@@ -378,30 +419,19 @@ export class GameScene extends Phaser.Scene {
     }, 200)
   }
 
-  private getFogOccludedAlpha(rank: number): number {
-    const clampedRank = Math.max(0, Math.min(10, Math.floor(rank)))
-    const values: number[] = [1, 1, 0.98, 0.96, 0.93, 0.88, 0.8, 0.7, 0.55, 0.4, 0.28]
-    return values[clampedRank]
-  }
+  private shouldRenderGhostForAmnesia(amnesiaIntensity: number): boolean {
+    if (amnesiaIntensity <= 0) return true
 
-  private getFogHardOcclusionFactor(rank: number): number {
-    const clampedRank = Math.max(0, Math.min(10, Math.floor(rank)))
-    const values: number[] = [0, 0, 0, 0, 0, 0.15, 0.28, 0.45, 0.62, 0.8, 1]
-    return values[clampedRank]
-  }
-
-  private shouldRenderGhostForAmnesia(rank: VexRank | 0): boolean {
-    if (rank <= 0) return true
-
-    const chance = this.getAmnesiaGhostVisibilityChance(rank)
+    const chance = this.getAmnesiaGhostVisibilityChance(amnesiaIntensity)
     if (chance >= 1) return true
 
-    const windowMs = this.getAmnesiaGhostFlickerWindowMs(rank)
+    const windowMs = this.getAmnesiaGhostFlickerWindowMs(amnesiaIntensity)
     const bucket = Math.floor(this.time.now / windowMs)
+    const intensityBucket = Math.round(amnesiaIntensity * 100)
 
     // Deterministic pseudo-random value per time window so flicker feels jittery
     // but does not vary per frame.
-    const hashed = ((bucket * 1103515245 + rank * 12345) >>> 0) / 0xffffffff
+    const hashed = ((bucket * 1103515245 + intensityBucket * 12345) >>> 0) / 0xffffffff
     return hashed < chance
   }
 
@@ -725,7 +755,11 @@ export class GameScene extends Phaser.Scene {
     // Dev panel (backtick to toggle) is available only in development builds
     const isDevBuild = Boolean((import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV)
     if (isDevBuild) {
-      this.devPanel = new DevPanel(this.activeVexes, () => {
+      this.devPanel = new DevPanel(this.activeVexes, (vexes) => {
+        // Keep scene state authoritative even if the panel ever holds a stale
+        // array reference (e.g., after external tooling mutates state).
+        this.activeVexes.splice(0, this.activeVexes.length, ...vexes)
+
         // When dev panel changes vexes, re-setup all effects
         this.clearAllVexTimers();
         this.setupVexEffects();
@@ -1127,7 +1161,112 @@ export class GameScene extends Phaser.Scene {
   }
 
 
-  private drawBlock(x: number, y: number, color: number, alpha: number = 1, withDetail: boolean = true) {
+  private drawBlockColorGlyph(
+    x: number,
+    y: number,
+    runeSourceColor: number,
+    renderedBlockColor: number,
+    alpha: number,
+  ): void {
+    const size = BLOCK_SIZE
+    const inset = Math.max(6, Math.floor(size * 0.25))
+    const left = x + inset
+    const right = x + size - inset
+    const top = y + inset
+    const bottom = y + size - inset
+    const midX = x + size / 2
+    const midY = y + size / 2
+
+    const drawGlyph = (offsetX: number, offsetY: number) => {
+      const line = (x1: number, y1: number, x2: number, y2: number) => {
+        this.graphics.moveTo(x1 + offsetX, y1 + offsetY)
+          .lineTo(x2 + offsetX, y2 + offsetY)
+          .stroke()
+      }
+
+      switch (runeSourceColor) {
+        case COLORS.blockI:
+          // Pillar rune with a small etched spur.
+          line(midX, top, midX, bottom)
+          line(midX - 2, top + 2, midX + 2, top + 2)
+          line(midX, midY, midX + 4, midY - 4)
+          break
+        case COLORS.blockO:
+          // Closed lozenge rune.
+          line(midX, top, right, midY)
+          line(right, midY, midX, bottom)
+          line(midX, bottom, left, midY)
+          line(left, midY, midX, top)
+          break
+        case COLORS.blockT:
+          // Forked altar rune.
+          line(midX, top + 1, midX, bottom)
+          line(left + 1, top + 3, midX, top + 1)
+          line(right - 1, top + 3, midX, top + 1)
+          line(midX, midY, midX - 4, midY + 3)
+          break
+        case COLORS.blockS:
+          // Serpentine lightning rune.
+          line(left, top + 2, midX - 1, top + 2)
+          line(midX - 1, top + 2, left + 3, midY)
+          line(left + 3, midY, right - 2, midY)
+          line(right - 2, midY, midX + 1, bottom - 2)
+          line(midX + 1, bottom - 2, right, bottom - 2)
+          break
+        case COLORS.blockZ:
+          // Mirrored serpentine lightning rune.
+          line(right, top + 2, midX + 1, top + 2)
+          line(midX + 1, top + 2, right - 3, midY)
+          line(right - 3, midY, left + 2, midY)
+          line(left + 2, midY, midX - 1, bottom - 2)
+          line(midX - 1, bottom - 2, left, bottom - 2)
+          break
+        case COLORS.blockJ:
+          // Hooked descent rune.
+          line(right - 1, top, right - 1, bottom - 2)
+          line(right - 1, bottom - 2, left + 2, bottom - 2)
+          line(left + 2, bottom - 2, left + 2, midY + 1)
+          line(midX, top + 1, right - 1, top + 1)
+          break
+        case COLORS.blockL:
+          // Ascendant hooked rune.
+          line(left + 1, top, left + 1, bottom - 2)
+          line(left + 1, bottom - 2, right - 2, bottom - 2)
+          line(right - 2, bottom - 2, right - 2, midY + 1)
+          line(left + 1, top + 1, midX, top + 1)
+          break
+        default:
+          break
+      }
+    }
+
+    // Keep glyphs barely visible: use near-tone variants of the same block color.
+    const glyphShadow = this.blendColors(renderedBlockColor, 0x000000, 0.24)
+    const glyphHighlight = this.blendColors(renderedBlockColor, 0xffffff, 0.2)
+    const shadowAlpha = Math.min(0.18, 0.05 + alpha * 0.1)
+    const highlightAlpha = Math.min(0.22, 0.06 + alpha * 0.12)
+
+    this.graphics.lineStyle(2, glyphShadow, shadowAlpha)
+    drawGlyph(1, 1)
+
+    this.graphics.lineStyle(2, glyphHighlight, highlightAlpha)
+    drawGlyph(0, 0)
+
+    // Keep center embellishments minimal so the glyph remains a texture cue.
+    if (runeSourceColor === COLORS.blockO) {
+      this.graphics.fillStyle(glyphHighlight, Math.min(0.12, 0.03 + alpha * 0.06))
+      this.graphics.fillCircle(midX, midY, 1.2)
+    }
+  }
+
+  private drawBlock(
+    x: number,
+    y: number,
+    color: number,
+    alpha: number = 1,
+    withDetail: boolean = true,
+    glyphSourceColor: number = color,
+  ) {
     const size = BLOCK_SIZE;
 
     // Main block
@@ -1144,6 +1283,10 @@ export class GameScene extends Phaser.Scene {
       this.graphics.lineStyle(4, 0x000000, 0.4);
       this.graphics.strokeLineShape(new Phaser.Geom.Line(x + 2, y + size - 2, x + size - 2, y + size - 2));
       this.graphics.strokeLineShape(new Phaser.Geom.Line(x + size - 2, y + 2, x + size - 2, y + size - 2));
+    }
+
+    if (withDetail && alpha >= 0.6) {
+      this.drawBlockColorGlyph(x, y, glyphSourceColor, color, alpha)
     }
   }
 
@@ -1192,16 +1335,14 @@ export class GameScene extends Phaser.Scene {
 
     const boardOffsetX = 48;
     const boardOffsetY = 112;
-    const severeFog = this.fogRank >= 9 && this.fogHeightPx > 0
-    const fogTopLocalY = BOARD_HEIGHT * BLOCK_SIZE - this.fogHeightPx
     const amnesiaRank = this.getAmnesiaRank()
-    const hideNextPreview = amnesiaRank >= 1
-    const hideHoldPreview = amnesiaRank >= 2
-    const amnesiaPieceDesaturation = this.getAmnesiaPieceDesaturation(amnesiaRank)
-    const amnesiaBoardDesaturation = this.getAmnesiaBoardDesaturation(amnesiaRank)
-    const ghostVisible = this.shouldRenderGhostForAmnesia(amnesiaRank)
-    const ghostAlpha = this.getAmnesiaGhostAlpha(amnesiaRank)
-    const fogOccludedAlpha = this.getFogOccludedAlpha(this.fogRank)
+    const amnesiaIntensity = this.getAmnesiaIntensity(amnesiaRank)
+    const hideNextPreview = this.shouldHideNextPreview(amnesiaIntensity)
+    const hideHoldPreview = this.shouldHideHoldPreview(amnesiaIntensity)
+    const amnesiaPieceDesaturation = this.getAmnesiaPieceDesaturation(amnesiaIntensity)
+    const amnesiaBoardDesaturation = this.getAmnesiaBoardDesaturation(amnesiaIntensity)
+    const ghostVisible = this.shouldRenderGhostForAmnesia(amnesiaIntensity)
+    const ghostAlpha = this.getAmnesiaGhostAlpha(amnesiaIntensity)
 
     if (amnesiaRank > 0 && ghostVisible !== this.lastGhostVisible) {
       audioManager.playSfx('amnesia', { rank: amnesiaRank })
@@ -1216,7 +1357,8 @@ export class GameScene extends Phaser.Scene {
     for (let y = 0; y < BOARD_HEIGHT; y++) {
       for (let x = 0; x < BOARD_WIDTH; x++) {
         const cell = this.board[y][x];
-        let color = cell.color;
+        const sourceColor = cell.color
+        let color = sourceColor;
         if (this.clearingLines.includes(y)) {
           const cluster = this.scoringClusters.find(c => c.blocks.some(b => b.x === x && b.y === y));
           if (cluster && cluster.blocks.length > 1) {
@@ -1238,8 +1380,7 @@ export class GameScene extends Phaser.Scene {
         const py = Math.floor(boardOffsetY + y * BLOCK_SIZE);
 
         if (cell.filled || this.clearingLines.includes(y)) {
-          const isOccluded = this.isHardFogOccludedRow(y);
-          this.drawBlock(px, py, color, isOccluded ? fogOccludedAlpha : 1, !isOccluded);
+          this.drawBlock(px, py, color, 1, true, sourceColor);
         }
       }
     }
@@ -1253,17 +1394,18 @@ export class GameScene extends Phaser.Scene {
         for (let y = 0; y < shape.length; y++) {
           for (let x = 0; x < shape[y].length; x++) {
             const boardX = ghostRenderX + x
-            if (shape[y][x] && boardX >= 0 && boardX < BOARD_WIDTH && !this.isHardFogOccludedRow(ghostPos.y + y)) {
+            if (shape[y][x] && boardX >= 0 && boardX < BOARD_WIDTH) {
               const px = Math.floor(boardOffsetX + boardX * BLOCK_SIZE);
               const py = Math.floor(boardOffsetY + (ghostPos.y + y) * BLOCK_SIZE);
-              let ghostColor = colors[y][x]
+              const sourceGhostColor = colors[y][x]
+              let ghostColor = sourceGhostColor
               if (amnesiaPieceDesaturation > 0) {
                 ghostColor = this.blendColorToGray(ghostColor, amnesiaPieceDesaturation)
               }
               if (this.fogRank > 0) {
                 ghostColor = this.desaturateColorByFogRank(ghostColor)
               }
-              this.drawBlock(px, py, ghostColor, ghostAlpha); // Semi-transparent
+              this.drawBlock(px, py, ghostColor, ghostAlpha, true, sourceGhostColor); // Semi-transparent
             }
           }
         }
@@ -1312,18 +1454,17 @@ export class GameScene extends Phaser.Scene {
       for (let y = 0; y < shape.length; y++) {
         for (let x = 0; x < shape[y].length; x++) {
           if (shape[y][x]) {
-            const row = position.y + y;
-            let pieceColor = colors[y][x];
+            const sourcePieceColor = colors[y][x]
+            let pieceColor = sourcePieceColor;
             if (amnesiaPieceDesaturation > 0) {
               pieceColor = this.blendColorToGray(pieceColor, amnesiaPieceDesaturation)
             }
             if (this.fogRank > 0) {
               pieceColor = this.desaturateColorByFogRank(pieceColor);
             }
-            const occluded = this.isHardFogOccludedRow(row);
             const px = Math.floor(boardOffsetX + (position.x + x) * BLOCK_SIZE);
             const py = Math.floor(boardOffsetY + (position.y + y) * BLOCK_SIZE);
-            this.drawBlock(px, py, pieceColor, occluded ? fogOccludedAlpha : 1, !occluded);
+            this.drawBlock(px, py, pieceColor, 1, true, sourcePieceColor);
           }
         }
       }
@@ -1340,11 +1481,12 @@ export class GameScene extends Phaser.Scene {
           if (shape[y][x]) {
             const px = Math.floor(nextX + x * BLOCK_SIZE);
             const py = Math.floor(nextY + y * BLOCK_SIZE);
-            let previewColor = colors[y][x]
+            const sourcePreviewColor = colors[y][x]
+            let previewColor = sourcePreviewColor
             if (amnesiaPieceDesaturation > 0) {
               previewColor = this.blendColorToGray(previewColor, amnesiaPieceDesaturation)
             }
-            this.drawBlock(px, py, previewColor);
+            this.drawBlock(px, py, previewColor, 1, true, sourcePreviewColor);
           }
         }
       }
@@ -1361,11 +1503,12 @@ export class GameScene extends Phaser.Scene {
           if (shape[y][x]) {
             const px = Math.floor(holdX + x * BLOCK_SIZE);
             const py = Math.floor(holdY + y * BLOCK_SIZE);
-            let holdColor = colors[y][x]
+            const sourceHoldColor = colors[y][x]
+            let holdColor = sourceHoldColor
             if (amnesiaPieceDesaturation > 0) {
               holdColor = this.blendColorToGray(holdColor, amnesiaPieceDesaturation)
             }
-            this.drawBlock(px, py, holdColor);
+            this.drawBlock(px, py, holdColor, 1, true, sourceHoldColor);
           }
         }
       }
@@ -1381,15 +1524,13 @@ export class GameScene extends Phaser.Scene {
 
     // Draw subtle grid lines
     this.graphics.lineStyle(1, 0x3c2c34, 0.34);
-    const gridBottomY = severeFog ? boardOffsetY + Math.max(0, fogTopLocalY) : boardOffsetY + BOARD_HEIGHT * BLOCK_SIZE;
+    const gridBottomY = boardOffsetY + BOARD_HEIGHT * BLOCK_SIZE;
     for (let x = 1; x < BOARD_WIDTH; x++) {
       this.graphics.moveTo(boardOffsetX + x * BLOCK_SIZE, boardOffsetY)
         .lineTo(boardOffsetX + x * BLOCK_SIZE, gridBottomY)
         .stroke();
     }
     for (let y = 1; y < BOARD_HEIGHT; y++) {
-      const lineY = boardOffsetY + y * BLOCK_SIZE;
-      if (severeFog && lineY >= gridBottomY) break;
       this.graphics.moveTo(boardOffsetX, boardOffsetY + y * BLOCK_SIZE)
         .lineTo(boardOffsetX + BOARD_WIDTH * BLOCK_SIZE, boardOffsetY + y * BLOCK_SIZE)
         .stroke();
@@ -1797,8 +1938,9 @@ export class GameScene extends Phaser.Scene {
     this.updateVexAmbienceAudio(time)
 
     const amnesiaRank = this.getAmnesiaRank()
-    this.hudNextLabelText.setVisible(amnesiaRank < 1)
-    this.hudHoldLabelText.setVisible(amnesiaRank < 2)
+    const amnesiaIntensity = this.getAmnesiaIntensity(amnesiaRank)
+    this.hudNextLabelText.setVisible(!this.shouldHideNextPreview(amnesiaIntensity))
+    this.hudHoldLabelText.setVisible(!this.shouldHideHoldPreview(amnesiaIntensity))
 
     // Update Balatro-style Vex bar across the top
     updateVexBar(this.activeVexes)
@@ -1880,6 +2022,7 @@ export class GameScene extends Phaser.Scene {
     // Small delay so the flash is visible before overlay appears
     this.time.delayedCall(400, () => {
       showVexShop(this.activeVexes, this.currentLevel, this.resolveCurrent, this.currentLevelParams.resolveMax, () => {
+        this.devPanel?.syncFromGame(this.activeVexes)
         this.startNextLevel()
       })
     })
@@ -2116,7 +2259,9 @@ export class GameScene extends Phaser.Scene {
    */
   private showRisingWarning(): void {
     audioManager.playSfx('risingWarn')
-    const boardElement = document.querySelector('.board, #board, [data-board]') as HTMLElement;
+    // The game renders to Phaser canvas inside #game; legacy selectors like
+    // .board/#board don't exist in this project.
+    const boardElement = document.getElementById('game') as HTMLElement | null
     if (!boardElement) return;
 
     // Add warning class
@@ -2274,22 +2419,13 @@ export class GameScene extends Phaser.Scene {
     this.combo = 0
 
     // Vexes are chosen via the shop between levels.
-    // Start with an empty array — no effects until the player picks one.
-    this.activeVexes = []
+    // Keep the same array instance so DevPanel references stay valid after reset.
+    this.activeVexes.length = 0
   }
   private getMinimumFogRows(fogRank: number): number {
     const clampedRank = Math.max(0, Math.min(10, Math.floor(fogRank)))
     const rowsByRank = [0, 0.6, 1.2, 1.9, 2.8, 3.8, 5.0, 6.3, 7.7, 9.2, 10.8]
     return rowsByRank[clampedRank]
-  }
-
-  private isHardFogOccludedRow(row: number): boolean {
-    if (this.fogRank < 5 || this.fogHeightPx <= 0) return false
-    const factor = this.getFogHardOcclusionFactor(this.fogRank)
-    if (factor <= 0) return false
-    const hardOcclusionHeight = this.fogHeightPx * factor
-    const rowMidpoint = row * BLOCK_SIZE + BLOCK_SIZE / 2
-    return rowMidpoint >= (BOARD_HEIGHT * BLOCK_SIZE - hardOcclusionHeight)
   }
 
   private desaturateColorByFogRank(color: number): number {
@@ -2453,6 +2589,7 @@ export class GameScene extends Phaser.Scene {
     this.spawnPiece();
     if (this.gameOverBg) this.gameOverBg.setVisible(false);
     if (this.gameOverText) this.gameOverText.setVisible(false);
+    this.devPanel?.syncFromGame(this.activeVexes)
   }
 
   private abandonRun() {

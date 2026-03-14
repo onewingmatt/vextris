@@ -430,7 +430,8 @@ export const createVexAmnesia = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): 
         const values: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, number> = {
             1: 0.3, 2: 0.7, 3: 1.3, 4: 1.95, 5: 2.6, 6: 3.25, 7: 3.9, 8: 4.55, 9: 5.2, 10: 5.85
         }
-        return values[r]
+        const levelScale = 0.65 + Math.max(0, Math.min(1, (ctx.currentLevel - 1) / 9)) * 0.35
+        return values[r] * levelScale
     },
 
     onApply(_r) {

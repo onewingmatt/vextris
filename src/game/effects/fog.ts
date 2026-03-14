@@ -38,16 +38,17 @@ const FOG_RENDER_SCALE = 0.5
 const INTERNAL_W = Math.round(BOARD_PX_W * FOG_RENDER_SCALE)
 const INTERNAL_H = Math.round(BOARD_PX_H * FOG_RENDER_SCALE)
 const FOG_FRAME_MS = 1000 / 30
+type FogRank = 1|2|3|4|5|6|7|8|9|10
 
 // ---------------------------------------------------------------------------
 // Rank → opacity / blob parameters (10 levels)
 // ---------------------------------------------------------------------------
 
-const RANK_OPACITY: Record<1|2|3|4|5|6|7|8|9|10, number> = {
+const RANK_OPACITY: Record<FogRank, number> = {
   1: 0.42, 2: 0.50, 3: 0.58, 4: 0.66, 5: 0.74,
   6: 0.81, 7: 0.88, 8: 0.94, 9: 0.98, 10: 1.00
 }
-const RANK_BLOB_COUNT: Record<1|2|3|4|5|6|7|8|9|10, number> = {
+const RANK_BLOB_COUNT: Record<FogRank, number> = {
   1: 7, 2: 9, 3: 11, 4: 13, 5: 15,
   6: 17, 7: 19, 8: 22, 9: 26, 10: 30
 }
@@ -116,7 +117,68 @@ function paintLayer(layerCtx: CanvasRenderingContext2D, puffCount: number, alpha
   layerCtx.filter = 'none'
 }
 
-function makeLayer(rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, layerIndex: number, layerCount: number): FogLayer {
+function paintCoverageLayer(layerCtx: CanvasRenderingContext2D, rank: FogRank): void {
+  layerCtx.clearRect(0, 0, INTERNAL_W, INTERNAL_H)
+
+  const rankNorm = (rank - 1) / 9
+  const baseAlpha = 0.07 + rankNorm * 0.24
+  layerCtx.fillStyle = `rgba(92,106,124,${baseAlpha.toFixed(3)})`
+  layerCtx.fillRect(0, 0, INTERNAL_W, INTERNAL_H)
+
+  // Dense pockets: some columns should feel much thicker than neighbors.
+  const bankCount = Math.round(8 + rank * 3)
+  for (let index = 0; index < bankCount; index++) {
+    const x = Math.random() * INTERNAL_W
+    const y = Math.pow(Math.random(), 0.55) * INTERNAL_H
+    const radius = 16 + Math.random() * 32 + rank * 1.6
+    const alpha = (0.05 + Math.random() * 0.12) * (0.65 + rankNorm * 0.95)
+
+    const grad = layerCtx.createRadialGradient(x, y, 0, x, y, radius)
+    grad.addColorStop(0, `rgba(84,96,114,${alpha.toFixed(3)})`)
+    grad.addColorStop(0.7, `rgba(84,96,114,${(alpha * 0.45).toFixed(3)})`)
+    grad.addColorStop(1, 'rgba(84,96,114,0)')
+
+    layerCtx.fillStyle = grad
+    layerCtx.beginPath()
+    layerCtx.arc(x, y, radius, 0, Math.PI * 2)
+    layerCtx.fill()
+  }
+
+  // Low ranks keep clear pockets so the fog feels patchy rather than uniform.
+  const holeCount = Math.max(0, Math.round(16 - rank * 1.4))
+  if (holeCount > 0) {
+    layerCtx.globalCompositeOperation = 'destination-out'
+    for (let index = 0; index < holeCount; index++) {
+      const x = Math.random() * INTERNAL_W
+      const y = (0.2 + Math.random() * 0.8) * INTERNAL_H
+      const radius = 10 + Math.random() * 22
+      const alpha = 0.2 + Math.random() * 0.34
+
+      const cutout = layerCtx.createRadialGradient(x, y, 0, x, y, radius)
+      cutout.addColorStop(0, `rgba(0,0,0,${alpha.toFixed(3)})`)
+      cutout.addColorStop(1, 'rgba(0,0,0,0)')
+
+      layerCtx.fillStyle = cutout
+      layerCtx.beginPath()
+      layerCtx.arc(x, y, radius, 0, Math.PI * 2)
+      layerCtx.fill()
+    }
+    layerCtx.globalCompositeOperation = 'source-over'
+  }
+
+  // High ranks get an added murk veil so the lower stack feels oppressive.
+  if (rank >= 8) {
+    const veil = 0.08 + (rank - 8) * 0.07
+    const murk = layerCtx.createLinearGradient(0, INTERNAL_H * 0.2, 0, INTERNAL_H)
+    murk.addColorStop(0, 'rgba(0,0,0,0)')
+    murk.addColorStop(0.55, `rgba(78,88,100,${(veil * 0.55).toFixed(3)})`)
+    murk.addColorStop(1, `rgba(58,66,76,${veil.toFixed(3)})`)
+    layerCtx.fillStyle = murk
+    layerCtx.fillRect(0, 0, INTERNAL_W, INTERNAL_H)
+  }
+}
+
+function makeLayer(rank: FogRank, layerIndex: number, layerCount: number): FogLayer {
   const layerCanvas = createLayerCanvas()
   const layerCtx = layerCanvas.getContext('2d')!
   const puffCount = Math.max(4, Math.ceil(RANK_BLOB_COUNT[rank] / layerCount))
@@ -133,7 +195,22 @@ function makeLayer(rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, layerIndex: num
   }
 }
 
-function rebuildLayers(rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): FogLayer[] {
+function makeCoverageLayer(rank: FogRank): FogLayer {
+  const layerCanvas = createLayerCanvas()
+  const layerCtx = layerCanvas.getContext('2d')!
+  paintCoverageLayer(layerCtx, rank)
+
+  return {
+    canvas: layerCanvas,
+    driftX: (Math.random() < 0.5 ? -1 : 1) * (1.5 + rank * 0.2) * FOG_RENDER_SCALE,
+    driftY: -(0.25 + rank * 0.08) * FOG_RENDER_SCALE,
+    offsetX: Math.random() * INTERNAL_W,
+    offsetY: Math.random() * INTERNAL_H,
+    alpha: 1,
+  }
+}
+
+function rebuildLayers(rank: FogRank): FogLayer[] {
   const layerCount = rank >= 7 ? 3 : 2
   return Array.from({ length: layerCount }, (_, index) => makeLayer(rank, index, layerCount))
 }
@@ -161,6 +238,8 @@ const GAME_CONTAINER = 'game'
 let canvas: HTMLCanvasElement | null = null
 let ctx: CanvasRenderingContext2D | null = null
 let layers: FogLayer[] = []
+let coverageLayer: FogLayer | null = null
+let currentRank: FogRank = 1
 let maxOpacity: number = 0.45
 let fogHeight: number = 0      // target height in game units (set by GameScene)
 let displayedHeight: number = 0      // lerped height in game units
@@ -264,12 +343,34 @@ function tick(ts: number): void {
     layer.offsetX += layer.driftX * dt
     layer.offsetY += layer.driftY * dt
   }
+  if (coverageLayer) {
+    coverageLayer.offsetX += coverageLayer.driftX * dt
+    coverageLayer.offsetY += coverageLayer.driftY * dt
+  }
 
   ctx.clearRect(0, 0, w, h)
   for (const layer of layers) {
     ctx.globalAlpha = Math.min(1, maxOpacity * layer.alpha)
     drawWrappedLayer(ctx, layer)
   }
+
+  if (coverageLayer) {
+    ctx.globalAlpha = 1
+    drawWrappedLayer(ctx, coverageLayer)
+  }
+
+  // A soft volumetric blanket makes the fog itself do the obscuring.
+  // This avoids needing any gameplay-layer alpha hacks on blocks.
+  const rankNorm = (currentRank - 1) / 9
+  const blanket = ctx.createLinearGradient(0, h * 0.35, 0, h)
+  const blanketPeak = Math.min(0.92, 0.12 + rankNorm * 0.8)
+  blanket.addColorStop(0, 'rgba(0,0,0,0)')
+  blanket.addColorStop(0.5, `rgba(126,136,150,${(blanketPeak * 0.36).toFixed(3)})`)
+  blanket.addColorStop(0.78, `rgba(94,104,118,${(blanketPeak * 0.68).toFixed(3)})`)
+  blanket.addColorStop(1, `rgba(74,84,96,${blanketPeak.toFixed(3)})`)
+  ctx.globalAlpha = 1
+  ctx.fillStyle = blanket
+  ctx.fillRect(0, 0, w, h)
   ctx.globalAlpha = 1
 
   // ── Gradient mask ────────────────────────────────────────────────
@@ -297,9 +398,10 @@ function tick(ts: number): void {
 // Public API
 // ---------------------------------------------------------------------------
 
-export function enableFog(rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
+export function enableFog(rank: FogRank): void {
   if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null }
 
+  currentRank = rank
   maxOpacity = RANK_OPACITY[rank]
 
   const c = getOrCreateCanvas()
@@ -309,6 +411,7 @@ export function enableFog(rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
   syncCanvasPosition()
 
   layers = rebuildLayers(rank)
+  coverageLayer = makeCoverageLayer(rank)
 
   displayedHeight = Math.max(displayedHeight, fogHeight)
   lastTs = 0
@@ -331,10 +434,19 @@ export function disableFog(): void {
     }
   }
   layers = []
+
+  if (coverageLayer) {
+    const coverageCtx = coverageLayer.canvas.getContext('2d')
+    if (coverageCtx) {
+      coverageCtx.clearRect(0, 0, coverageLayer.canvas.width, coverageLayer.canvas.height)
+    }
+  }
+  coverageLayer = null
   
   if (ctx && canvas) {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
   }
+  currentRank = 1
   fogHeight = 0
   displayedHeight = 0
 }

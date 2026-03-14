@@ -266,9 +266,7 @@ export class DevPanel {
       // Change rank
       const vex = this.activeVexes.find(v => v.id === id)
       if (vex) {
-        const oldRank = vex.rank
         upgradeVex(vex, rank)
-        vex.onRankChange?.(oldRank, rank)
       }
       this.state.set(id, rank)
     }

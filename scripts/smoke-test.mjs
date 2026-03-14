@@ -449,6 +449,174 @@ async function runSmokeSuite(url, mode) {
     };
   }
 
+  const vexRuntimeSanity = await page.evaluate(() => {
+    const scene = window.game?.scene?.keys?.GameScene;
+    if (!scene) {
+      return { passed: false, details: { reason: 'GameScene not found' } };
+    }
+
+    const scale1 = scene.getQuicksandGravityScale?.(1);
+    const scale5 = scene.getQuicksandGravityScale?.(5);
+    const scale10 = scene.getQuicksandGravityScale?.(10);
+    const quicksandScalingValid =
+      Number.isFinite(scale1) &&
+      Number.isFinite(scale5) &&
+      Number.isFinite(scale10) &&
+      scale1 > scale5 &&
+      scale5 > scale10;
+
+    const gameEl = document.getElementById('game');
+    gameEl?.classList.remove('rising-warning');
+    scene.showRisingWarning?.();
+    const risingWarningApplied = gameEl ? gameEl.classList.contains('rising-warning') : false;
+
+    const previousVexes = Array.isArray(scene.activeVexes) ? [...scene.activeVexes] : [];
+    scene.clearAllVexTimers?.();
+
+    scene.activeVexes.splice(0, scene.activeVexes.length,
+      { id: 'rising_dread', rank: 10 },
+      { id: 'corruption', rank: 10 },
+      { id: 'mirage', rank: 10 },
+      { id: 'tremor', rank: 6 },
+      { id: 'whiplash', rank: 6 },
+    );
+    scene.setupVexEffects?.();
+
+    const hasRisingTimer = scene.vexIntervals?.has?.('rising_dread') ?? false;
+    const hasCorruptionTimer = scene.vexIntervals?.has?.('corruption') ?? false;
+    const hasMirageTimer = scene.vexIntervals?.has?.('mirage') ?? false;
+    const tremorOverlayPresent = Boolean(document.getElementById('tremor-overlay'));
+    const whiplashOverlayPresent = Boolean(document.getElementById('whiplash-overlay'));
+
+    scene.clearAllVexTimers?.();
+    scene.activeVexes.splice(0, scene.activeVexes.length, ...previousVexes);
+    scene.setupVexEffects?.();
+
+    const passed =
+      quicksandScalingValid &&
+      risingWarningApplied &&
+      hasRisingTimer &&
+      hasCorruptionTimer &&
+      hasMirageTimer &&
+      tremorOverlayPresent &&
+      whiplashOverlayPresent;
+
+    return {
+      passed,
+      details: {
+        scale1,
+        scale5,
+        scale10,
+        quicksandScalingValid,
+        risingWarningApplied,
+        hasRisingTimer,
+        hasCorruptionTimer,
+        hasMirageTimer,
+        tremorOverlayPresent,
+        whiplashOverlayPresent,
+      },
+    };
+  });
+
+  let vexFactoryMatrix = {
+    passed: true,
+    details: { skipped: mode !== 'dev' },
+  };
+
+  if (mode === 'dev') {
+    vexFactoryMatrix = await page.evaluate(async () => {
+      const scene = window.game?.scene?.keys?.GameScene;
+      if (!scene) {
+        return { passed: false, details: { reason: 'GameScene not found' } };
+      }
+
+      const { STARTER_VEX_FACTORIES } = await import('/src/game/vex.ts');
+      const ids = Object.keys(STARTER_VEX_FACTORIES);
+      const previousVexes = Array.isArray(scene.activeVexes) ? [...scene.activeVexes] : [];
+      const previousState = scene.gameState;
+      const details = {};
+
+      scene.gameState = 'PLAYING';
+
+      for (const id of ids) {
+        scene.clearAllVexTimers?.();
+        scene.activeVexes.splice(0, scene.activeVexes.length, STARTER_VEX_FACTORIES[id](10));
+        scene.setupVexEffects?.();
+
+        // Allow DOM overlays/timers to initialize.
+        const settleMs = id === 'blackout' ? 1200 : 30;
+        await new Promise((resolve) => setTimeout(resolve, settleMs));
+
+        let ok = true;
+        if (id === 'blackout') ok = Boolean(document.getElementById('blackout-overlay'));
+        if (id === 'fog') ok = Boolean(document.getElementById('fog-canvas'));
+        if (id === 'corruption') ok = scene.vexIntervals?.has?.('corruption') ?? false;
+        if (id === 'quicksand') {
+          const rank = scene.getActiveVexRank?.('quicksand') ?? 0;
+          const scale = scene.getQuicksandGravityScale?.(rank);
+          ok = Number.isFinite(scale) && scale > 0 && scale < 1;
+        }
+        if (id === 'amnesia') ok = (scene.getActiveVexRank?.('amnesia') ?? 0) === 10;
+        if (id === 'rising_dread') ok = scene.vexIntervals?.has?.('rising_dread') ?? false;
+        if (id === 'lead_fingers') ok = (scene.getActiveVexRank?.('lead_fingers') ?? 0) === 10;
+        if (id === 'whiplash') ok = Boolean(document.getElementById('whiplash-overlay'));
+        if (id === 'tremor') ok = Boolean(document.getElementById('tremor-overlay'));
+        if (id === 'mirage') ok = scene.vexIntervals?.has?.('mirage') ?? false;
+        if (id === 'jinxed') ok = (scene.getActiveVexRank?.('jinxed') ?? 0) === 10;
+        if (id === 'pressure') ok = (scene.getActiveVexRank?.('pressure') ?? 0) === 10;
+
+        details[id] = ok;
+      }
+
+      scene.clearAllVexTimers?.();
+      scene.activeVexes.splice(0, scene.activeVexes.length, ...previousVexes);
+      scene.gameState = previousState;
+      scene.setupVexEffects?.();
+
+      const passed = Object.values(details).every(Boolean);
+      return { passed, details };
+    });
+  }
+
+  let devPanelVexToggle = {
+    passed: true,
+    details: { skipped: mode !== 'dev' },
+  };
+
+  if (mode === 'dev') {
+    await page.keyboard.press('Backquote');
+    await page.waitForSelector('#vextris-dev-panel.open', { timeout: 2000 });
+    await page.click('#dev-clear-vexes');
+    await page.click('[data-vex="fog"][data-rank="1"]');
+    await page.waitForTimeout(200);
+
+    const devPanelDetails = await page.evaluate(() => {
+      const scene = window.game?.scene?.keys?.GameScene;
+      if (!scene) {
+        return { reason: 'GameScene not found' };
+      }
+
+      const fog = scene.activeVexes.find((v) => v.id === 'fog');
+      const panel = document.getElementById('vextris-dev-panel');
+      const fogCanvas = document.getElementById('fog-canvas');
+
+      return {
+        fogRank: fog?.rank ?? 0,
+        activeIds: scene.activeVexes.map((v) => `${v.id}:${v.rank}`),
+        panelOpen: panel ? panel.classList.contains('open') : false,
+        fogCanvasPresent: Boolean(fogCanvas),
+      };
+    });
+
+    devPanelVexToggle = {
+      passed: devPanelDetails.fogRank === 1 && devPanelDetails.fogCanvasPresent === true,
+      details: devPanelDetails,
+    };
+
+    await page.click('#dev-clear-vexes');
+    await page.keyboard.press('Backquote');
+  }
+
   const perf = await page.evaluate(() => {
     const scene = window.game?.scene?.keys?.GameScene;
     if (!scene || typeof scene.render !== 'function' || typeof scene.update !== 'function') {
@@ -500,6 +668,9 @@ async function runSmokeSuite(url, mode) {
     { name: 'keyboard_setup', ...keyboardSetup },
     { name: 'keyboard_line_clear_e2e', ...keyboardLineClear },
     { name: 'quicksand_bonus_hex', ...quicksandBonusHex },
+    { name: 'vex_runtime_sanity', ...vexRuntimeSanity },
+    { name: 'vex_factory_matrix', ...vexFactoryMatrix },
+    { name: 'devpanel_vex_toggle', ...devPanelVexToggle },
     { name: 'perf_microbench', ...perf },
   ];
 
