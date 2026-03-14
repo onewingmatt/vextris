@@ -133,6 +133,7 @@ export class AudioManager {
   private vexGain: GainNode | null = null
   private bgmAudio?: HTMLAudioElement
   private bgmSource?: MediaElementAudioSourceNode
+  private bgmUrl?: string
   private bgmSynthNodes: AudioNode[] = []
   private bgmSynthInterval?: number
   private lastPlayedAt = new Map<SfxId, number>()
@@ -169,9 +170,21 @@ export class AudioManager {
     if (this.context && this.context.state === 'suspended') {
       void this.context.resume().catch(() => undefined)
     }
+
+    // Retry BGM when the user interacts, in case autoplay was blocked.
+    if (this.bgmAudio && this.bgmAudio.paused) {
+      const playPromise = this.bgmAudio.play()
+      if (playPromise && typeof playPromise.then === 'function') {
+        void playPromise.catch(() => undefined)
+      }
+    } else if (!this.bgmAudio && this.bgmUrl) {
+      // If we never successfully created the audio element, try again.
+      this.startBgm(this.bgmUrl)
+    }
   }
 
   startBgm(url: string): void {
+    this.bgmUrl = url
     this.unlock()
     this.stopBgm()
     this.init()
@@ -197,7 +210,7 @@ export class AudioManager {
     const playPromise = this.bgmAudio.play()
     if (playPromise && typeof playPromise.then === 'function') {
       void playPromise.catch(() => {
-        this.startBgmSynth()
+        // Keep the audio element around to retry on the next user interaction.
       })
     }
   }
