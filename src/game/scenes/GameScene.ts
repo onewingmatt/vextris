@@ -2505,6 +2505,9 @@ export class GameScene extends Phaser.Scene {
 
   // --- UI Overlays & State ---
   private setupUI() {
+    // Mark that UI setup ran (useful for debugging in headless tests).
+    ;(window as any).__vextrisSetupUI = true;
+
     const btnBegin = document.getElementById('btn-begin-rite');
     if (btnBegin) {
       btnBegin.onclick = () => {

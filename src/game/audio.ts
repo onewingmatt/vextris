@@ -140,6 +140,7 @@ export class AudioManager {
   private sampleBuffers = new Map<SfxId, AudioBuffer>()
   private sampleLoadPromises = new Map<SfxId, Promise<void>>()
   private unlockBound = false
+  private isStartingBgm = false
 
   constructor() {
     this.settings = this.loadSettings()
@@ -166,6 +167,10 @@ export class AudioManager {
     this.bindUnlockListeners()
   }
 
+  private finishStartBgm() {
+    this.isStartingBgm = false
+  }
+
   unlock(): void {
     if (this.context && this.context.state === 'suspended') {
       void this.context.resume().catch(() => undefined)
@@ -177,41 +182,50 @@ export class AudioManager {
       if (playPromise && typeof playPromise.then === 'function') {
         void playPromise.catch(() => undefined)
       }
-    } else if (!this.bgmAudio && this.bgmUrl) {
+    } else if (!this.bgmAudio && this.bgmUrl && !this.isStartingBgm) {
       // If we never successfully created the audio element, try again.
       this.startBgm(this.bgmUrl)
     }
   }
 
   startBgm(url: string): void {
-    this.bgmUrl = url
-    this.unlock()
-    this.stopBgm()
-    this.init()
+    if (this.isStartingBgm) return
+    this.isStartingBgm = true
+    try {
+      this.bgmUrl = url
+      // Ensure the audio context is unlocked in case autoplay blocks the first play.
+      if (this.context && this.context.state === 'suspended') {
+        void this.context.resume().catch(() => undefined)
+      }
+      this.stopBgm()
+      this.init()
 
-    if (url === 'synth') {
-      this.startBgmSynth()
-      return
-    }
-
-    if (!this.bgmAudio) {
-      const audio = new Audio(url)
-      audio.loop = true
-      audio.preload = 'auto'
-      audio.addEventListener('error', () => {
-        // Fallback to a simple synth-based BGM when the file is missing or fails to load.
+      if (url === 'synth') {
         this.startBgmSynth()
-      })
-      this.bgmAudio = audio
-      this.attachBgmToGraph(audio)
-    }
+        return
+      }
 
-    this.applySettingsToBgm()
-    const playPromise = this.bgmAudio.play()
-    if (playPromise && typeof playPromise.then === 'function') {
-      void playPromise.catch(() => {
-        // Keep the audio element around to retry on the next user interaction.
-      })
+      if (!this.bgmAudio) {
+        const audio = new Audio(url)
+        audio.loop = true
+        audio.preload = 'auto'
+        audio.addEventListener('error', () => {
+          // Fallback to a simple synth-based BGM when the file is missing or fails to load.
+          this.startBgmSynth()
+        })
+        this.bgmAudio = audio
+        this.attachBgmToGraph(audio)
+      }
+
+      this.applySettingsToBgm()
+      const playPromise = this.bgmAudio.play()
+      if (playPromise && typeof playPromise.then === 'function') {
+        void playPromise.catch(() => {
+          // Keep the audio element around to retry on the next user interaction.
+        })
+      }
+    } finally {
+      this.finishStartBgm()
     }
   }
 
