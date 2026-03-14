@@ -770,6 +770,11 @@ export class GameScene extends Phaser.Scene {
         this.setupVexEffects();
       })
       this.devPanel.bindKey()
+
+      // If URL contains ?dev=1, automatically open the panel.
+      if (urlParams.get('dev') === '1') {
+        this.devPanel.toggle()
+      }
     }
   }
 

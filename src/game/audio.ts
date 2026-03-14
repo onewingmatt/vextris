@@ -147,6 +147,14 @@ export class AudioManager {
   init(): void {
     this.ensureAudioGraph()
     this.applySettingsToGraph()
+
+    // Ensure music is audible by default (in case a previous session stored a muted state).
+    if (!this.settings.muted && !this.settings.musicMuted && this.settings.music < 0.08) {
+      this.settings.music = 0.6
+      this.persistSettings()
+      this.applySettingsToGraph()
+    }
+
     this.applySettingsToBgm()
     this.preloadConfiguredSamples()
     this.bindUnlockListeners()
@@ -607,44 +615,38 @@ export class AudioManager {
     this.stopBgm()
 
     const ctx = this.context
-    // Push the synth output through the existing music gain node (controlled by the UI sliders).
-    // This avoids additional attenuation and makes the BGM audible by default.
     const destination = this.musicGain
     if (!destination) return
 
-    const baseFreq = 98
-    const intervals = [0, 3, 7, 10]
-    const stepMs = 900
+    // Simple sustained two-oscillator backing to ensure BGM is clearly audible.
+    const masterGain = ctx.createGain()
+    masterGain.gain.value = 0.25
+    masterGain.connect(destination)
+    this.bgmSynthNodes.push(masterGain)
 
-    const scheduleNote = (time: number, intervalIndex: number) => {
-      const freq = baseFreq * Math.pow(2, intervals[intervalIndex] / 12)
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'sine'
-      osc.frequency.setValueAtTime(freq, time)
+    const osc1 = ctx.createOscillator()
+    osc1.type = 'sine'
+    osc1.frequency.setValueAtTime(110, ctx.currentTime)
+    osc1.connect(masterGain)
+    osc1.start()
+    this.bgmSynthNodes.push(osc1)
 
-      gain.gain.setValueAtTime(0.0001, time)
-      gain.gain.linearRampToValueAtTime(0.42, time + 0.12)
-      gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.56)
+    const osc2 = ctx.createOscillator()
+    osc2.type = 'triangle'
+    osc2.frequency.setValueAtTime(220, ctx.currentTime)
+    osc2.connect(masterGain)
+    osc2.start()
+    this.bgmSynthNodes.push(osc2)
 
-      osc.connect(gain)
-      gain.connect(destination)
-
-      osc.start(time)
-      osc.stop(time + 0.52)
-
-      this.bgmSynthNodes.push(osc, gain)
-    }
-
-    const loop = () => {
-      const now = ctx.currentTime
-      for (let i = 0; i < intervals.length; i++) {
-        scheduleNote(now + i * (stepMs / 1000), i)
-      }
-    }
-
-    loop()
-    this.bgmSynthInterval = window.setInterval(loop, stepMs * intervals.length)
+    const lfo = ctx.createOscillator()
+    const lfoGain = ctx.createGain()
+    lfo.type = 'sine'
+    lfo.frequency.setValueAtTime(0.18, ctx.currentTime)
+    lfoGain.gain.value = 8
+    lfo.connect(lfoGain)
+    lfoGain.connect(osc1.frequency)
+    lfo.start()
+    this.bgmSynthNodes.push(lfo, lfoGain)
   }
 
   private bindUnlockListeners(): void {
