@@ -147,6 +147,7 @@ export class GameScene extends Phaser.Scene {
   private mirageActive = false
   private mirageColOffset = 0
   private pressureCountdown: number | null = null
+  private lastPressureTick = Infinity
   private corruptionPulseTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor() {
@@ -343,6 +344,7 @@ export class GameScene extends Phaser.Scene {
       this.currentPiece.colors = this.currentPiece.shape.map((row) =>
         row.map((block) => (block ? randomColor : 0))
       )
+      audioManager.playSfx('jinxed', { rank })
     }
 
     if (cfg.columnJitter > 0) {
@@ -377,6 +379,7 @@ export class GameScene extends Phaser.Scene {
             colOffset = Math.random() < 0.5 ? -1 : 1
           }
           this.mirageColOffset = colOffset
+          audioManager.playSfx('mirage', { rank })
         }
 
         const onTimer = setTimeout(() => {
@@ -396,9 +399,11 @@ export class GameScene extends Phaser.Scene {
     const rank = this.getActiveVexRank('pressure')
     if (rank > 0 && this.currentPiece) {
       this.pressureCountdown = getPressureTimeLimit(rank as VexRank)
+      this.lastPressureTick = Infinity
       return
     }
     this.pressureCountdown = null
+    this.lastPressureTick = Infinity
   }
 
   private triggerCorruptionPulse(rank: VexRank): void {
@@ -944,6 +949,7 @@ export class GameScene extends Phaser.Scene {
         const whiplashRank = this.getActiveVexRank('whiplash')
         if (whiplashRank > 0) {
           triggerWhiplash(getWhiplashDuration(whiplashRank as VexRank))
+          audioManager.playSfx('whiplash', { rank: whiplashRank })
         }
       }
 
@@ -965,7 +971,12 @@ export class GameScene extends Phaser.Scene {
       // GB Skating: reset gravity on move
       this.gravityTimer = 0
       if (dy === 0 && dx !== 0) {
-        audioManager.playSfx('move')
+        const leadFingersRank = this.getActiveVexRank('lead_fingers')
+        if (leadFingersRank > 0) {
+          audioManager.playSfx('leadFingers', { rank: leadFingersRank })
+        } else {
+          audioManager.playSfx('move')
+        }
       }
       return true
     }
@@ -1431,6 +1442,14 @@ export class GameScene extends Phaser.Scene {
       const timeLimit = getPressureTimeLimit(pressureRank as VexRank)
       const ratio = Math.max(0, Math.min(1, this.pressureCountdown / timeLimit))
 
+      // Play a warning tick sound when the timer is in the last 3 seconds.
+      const tickThreshold = 3
+      const remaining = Math.max(0, Math.ceil(this.pressureCountdown))
+      if (remaining <= tickThreshold && remaining !== this.lastPressureTick) {
+        this.lastPressureTick = remaining
+        audioManager.playSfx('pressure', { rank: pressureRank })
+      }
+
       let minX = Number.POSITIVE_INFINITY
       let maxX = Number.NEGATIVE_INFINITY
       let minY = Number.POSITIVE_INFINITY
@@ -1822,6 +1841,7 @@ export class GameScene extends Phaser.Scene {
       }
     } else {
       this.pressureCountdown = null
+      this.lastPressureTick = Infinity
     }
 
     // --- Resolve Drain: Hybrid system ---

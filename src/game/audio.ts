@@ -31,6 +31,11 @@ export type SfxId =
   | 'blackout'
   | 'fog'
   | 'tremor'
+  | 'leadFingers'
+  | 'whiplash'
+  | 'mirage'
+  | 'jinxed'
+  | 'pressure'
 
 type SfxOptions = {
   linesCleared?: number
@@ -58,6 +63,11 @@ const VEX_SFX = new Set<SfxId>([
   'blackout',
   'fog',
   'tremor',
+  'leadFingers',
+  'whiplash',
+  'mirage',
+  'jinxed',
+  'pressure',
 ])
 
 const COOLDOWN_MS: Record<SfxId, number> = {
@@ -103,6 +113,11 @@ const SYNTH_EVENT_GAIN: Record<SfxId, number> = {
   blackout: 1.0,
   fog: 1.0,
   tremor: 1.0,
+  leadFingers: 0.9,
+  whiplash: 1.0,
+  mirage: 0.7,
+  jinxed: 0.8,
+  pressure: 0.9,
 }
 
 // Selected high-impact cues now prefer file assets, with synth fallback.
@@ -420,6 +435,38 @@ export class AudioManager {
         this.tone(eventGain, 82, 58, 0.16, amp, 'triangle')
         this.noise(eventGain, 0.1, amp * 0.8, 260)
         this.tone(eventGain, 68, 42, 0.12, amp * 0.6, 'square', 0.02)
+        break
+      }
+      case 'leadFingers': {
+        const amp = 0.022 + rank * 0.002
+        // Add a slightly heavier, metallic click for sluggish movement
+        this.tone(eventGain, 180, 140, 0.08, amp, 'triangle')
+        this.noise(eventGain, 0.03, amp * 0.75, 220)
+        break
+      }
+      case 'whiplash': {
+        const amp = 0.038 + rank * 0.0025
+        // A sharp snap to reinforce the blackout pulse
+        this.noise(eventGain, 0.04, amp * 0.9, 300)
+        this.tone(eventGain, 220, 140, 0.1, amp, 'square')
+        break
+      }
+      case 'mirage': {
+        const amp = 0.019 + rank * 0.0018
+        this.tone(eventGain, 520, 660, 0.12, amp, 'sine')
+        this.tone(eventGain, 720, 880, 0.09, amp * 0.7, 'triangle', 0.04)
+        break
+      }
+      case 'jinxed': {
+        const amp = 0.022 + rank * 0.002
+        this.noise(eventGain, 0.05, amp * 0.8, 950)
+        this.tone(eventGain, 420, 360, 0.1, amp, 'sawtooth')
+        break
+      }
+      case 'pressure': {
+        const amp = 0.026 + rank * 0.002
+        this.tone(eventGain, 720, 520, 0.07, amp, 'square')
+        this.noise(eventGain, 0.06, amp * 0.7, 420)
         break
       }
     }
