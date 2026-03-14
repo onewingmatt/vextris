@@ -93,14 +93,16 @@ const SYNTH_EVENT_GAIN: Record<SfxId, number> = {
   fail: 0.86,
   shopOpen: 0.64,
   uiClick: 0.42,
-  quicksand: 0.54,
-  amnesia: 0.58,
-  corruption: 0.62,
-  risingWarn: 0.70,
-  risingImpact: 0.90,
-  blackout: 0.58,
-  fog: 0.52,
-  tremor: 0.62,
+
+  // Vex-related cues are intentionally softer/more atmospheric than core SFX.
+  quicksand: 0.56,
+  amnesia: 0.52,
+  corruption: 0.58,
+  risingWarn: 0.44,
+  risingImpact: 0.68,
+  blackout: 0.52,
+  fog: 0.45,
+  tremor: 0.56,
 }
 
 // Selected high-impact cues now prefer file assets, with synth fallback.
@@ -304,44 +306,51 @@ export class AudioManager {
         break
       case 'quicksand': {
         const amp = 0.018 + rank * 0.0018
-        this.noise(eventGain, 0.12, amp, 320)
-        this.tone(eventGain, 130, 95, 0.09, 0.026, 'triangle')
+        this.noise(eventGain, 0.14, amp * 1.1, 300)
+        this.tone(eventGain, 130, 90, 0.14, amp * 0.9, 'triangle')
+        this.tone(eventGain, 180, 120, 0.12, amp * 0.6, 'sine', 0.03)
         break
       }
       case 'amnesia': {
         const amp = 0.025 + rank * 0.0019
         this.tone(eventGain, 640, 300, 0.06, amp, 'square')
-        this.noise(eventGain, 0.04, amp * 0.5, 900)
+        this.tone(eventGain, 520, 280, 0.05, amp * 0.72, 'triangle', 0.02)
+        this.noise(eventGain, 0.05, amp * 0.45, 900)
         break
       }
       case 'corruption': {
         const amp = 0.024 + rank * 0.0018
-        this.tone(eventGain, 180, 540, 0.035, amp, 'sawtooth')
-        this.tone(eventGain, 520, 260, 0.045, amp * 0.82, 'square', 0.03)
+        this.tone(eventGain, 180, 540, 0.04, amp, 'sawtooth')
+        this.tone(eventGain, 520, 260, 0.05, amp * 0.78, 'square', 0.03)
+        this.noise(eventGain, 0.08, amp * 0.5, 780)
         break
       }
       case 'risingWarn':
-        this.tone(eventGain, 110, 85, 0.18, 0.045, 'triangle')
+        this.tone(eventGain, 110, 62, 0.28, 0.042, 'triangle')
+        this.tone(eventGain, 140, 80, 0.22, 0.03, 'sine', 0.06)
         break
       case 'risingImpact':
-        this.tone(eventGain, 90, 40, 0.22, 0.082, 'sine')
+        this.tone(eventGain, 90, 44, 0.22, 0.08, 'sine')
+        this.tone(eventGain, 140, 90, 0.16, 0.055, 'triangle', 0.02)
         this.noise(eventGain, 0.11, 0.042, 200)
         break
       case 'blackout': {
         const amp = 0.026 + rank * 0.0024
-        this.tone(eventGain, 80, 50, 0.35, amp, 'sawtooth')
+        this.tone(eventGain, 80, 50, 0.38, amp, 'sawtooth')
+        this.noise(eventGain, 0.16, amp * 0.85, 320)
         break
       }
       case 'fog': {
         const amp = 0.018 + rank * 0.0022
-        this.noise(eventGain, 0.3, amp, 1100)
-        this.tone(eventGain, 120, 95, 0.26, amp * 0.75, 'sine')
+        this.noise(eventGain, 0.38, amp, 760)
+        this.tone(eventGain, 120, 88, 0.28, amp * 0.75, 'sine')
         break
       }
       case 'tremor': {
         const amp = 0.018 + rank * 0.0016
-        this.tone(eventGain, 82, 58, 0.14, amp, 'triangle')
-        this.noise(eventGain, 0.08, amp * 0.8, 260)
+        this.tone(eventGain, 82, 58, 0.16, amp, 'triangle')
+        this.noise(eventGain, 0.1, amp * 0.8, 260)
+        this.tone(eventGain, 68, 42, 0.12, amp * 0.6, 'square', 0.02)
         break
       }
     }
