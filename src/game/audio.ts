@@ -148,6 +148,11 @@ export class AudioManager {
     this.ensureAudioGraph()
     this.applySettingsToGraph()
 
+    // Expose for debugging/inspection in browser console.
+    if (typeof window !== 'undefined') {
+      ;(window as any).__vextrisAudioManager = this
+    }
+
     // Ensure music is audible by default (in case a previous session stored a muted state).
     if (!this.settings.muted && !this.settings.musicMuted && this.settings.music < 0.08) {
       this.settings.music = 0.6
