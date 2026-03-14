@@ -40,6 +40,33 @@ const PANEL_CSS = `
 }
 #${PANEL_ID}.open { display: block; }
 
+#${PANEL_ID}-toggle {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  width: 46px;
+  height: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  background: rgba(16, 12, 22, 0.7);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: "Press Start 2P", monospace;
+  font-size: 10px;
+  cursor: pointer;
+  z-index: 2000;
+  transition: transform 0.1s ease, opacity 0.25s ease;
+}
+#${PANEL_ID}-toggle:hover {
+  transform: translateY(-1px);
+}
+#${PANEL_ID}-toggle:active {
+  transform: translateY(0);
+}
+#${PANEL_ID}-toggle.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+`
 #${PANEL_ID} h3 {
   margin: 0 0 10px;
   font-size: 10px;
@@ -167,6 +194,10 @@ export class DevPanel {
 
     this.el = this.build()
     document.body.appendChild(this.el)
+
+    // Add a small always-visible toggle button so dev mode can be opened without needing a specific keyboard key.
+    // This is especially useful for non-US keyboard layouts or when backtick is hard to reach.
+    this.createToggleButton()
   }
 
   /**
@@ -176,7 +207,13 @@ export class DevPanel {
    */
   bindKey(): void {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === '`') this.toggle()
+      // Support backtick/tilde (varies by locale), plus a fallback hotkey.
+      const isBacktick = e.key === '`' || e.key === '~' || e.code === 'Backquote'
+      const isAlternate = e.key.toLowerCase() === 'd' && e.ctrlKey && e.shiftKey
+      if (isBacktick || isAlternate) {
+        e.preventDefault()
+        this.toggle()
+      }
     })
   }
 
@@ -310,11 +347,33 @@ export class DevPanel {
   }
 
   private cssInjected = false
+  private toggleButton?: HTMLElement
+
   private injectCSS(): void {
     if (this.cssInjected) return
     this.cssInjected = true
     const style = document.createElement('style')
     style.textContent = PANEL_CSS
     document.head.appendChild(style)
+  }
+
+  private createToggleButton(): void {
+    if (this.toggleButton || typeof document === 'undefined') return
+
+    const btn = document.createElement('button')
+    btn.id = `${PANEL_ID}-toggle`
+    btn.textContent = 'DEV'
+    btn.title = 'Toggle dev panel (backtick / Ctrl+Shift+D)'
+    btn.addEventListener('click', () => this.toggle())
+    document.body.appendChild(btn)
+    this.toggleButton = btn
+  }
+
+  destroy(): void {
+    this.el.remove()
+    if (this.toggleButton) {
+      this.toggleButton.remove()
+      this.toggleButton = undefined
+    }
   }
 }

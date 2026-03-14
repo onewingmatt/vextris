@@ -753,29 +753,32 @@ export class GameScene extends Phaser.Scene {
       align: 'center',
     }).setOrigin(0.5).setShadow(4, 4, '#000', 0, true, true).setVisible(false).setDepth(10);
 
-    // Dev panel (backtick to toggle) is available in dev builds or via ?dev=1.
+    // Dev panel (backtick to toggle) is always available, but it only auto-opens
+    // on dev builds or when ?dev is present.
     const urlParams = new URLSearchParams(window.location.search)
-    const isDevBuild =
-      Boolean((import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV) ||
-      urlParams.get('dev') === '1'
+    const hasDevParam = urlParams.has('dev')
+    const isDevBuild = Boolean((import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV)
 
-    if (isDevBuild) {
-      this.devPanel = new DevPanel(this.activeVexes, (vexes) => {
-        // Keep scene state authoritative even if the panel ever holds a stale
-        // array reference (e.g., after external tooling mutates state).
-        this.activeVexes.splice(0, this.activeVexes.length, ...vexes)
+    this.devPanel = new DevPanel(this.activeVexes, (vexes) => {
+      // Keep scene state authoritative even if the panel ever holds a stale
+      // array reference (e.g., after external tooling mutates state).
+      this.activeVexes.splice(0, this.activeVexes.length, ...vexes)
 
-        // When dev panel changes vexes, re-setup all effects
-        this.clearAllVexTimers();
-        this.setupVexEffects();
-      })
-      this.devPanel.bindKey()
+      // When dev panel changes vexes, re-setup all effects
+      this.clearAllVexTimers();
+      this.setupVexEffects();
+    })
+    this.devPanel.bindKey()
 
-      // If URL contains ?dev=1, automatically open the panel.
-      if (urlParams.get('dev') === '1') {
-        this.devPanel.toggle()
-      }
+    // If URL contains ?dev (any truthy value), automatically open the panel.
+    // Also auto-open in dev builds.
+    if (isDevBuild || (hasDevParam && urlParams.get('dev') !== '0')) {
+      this.devPanel.toggle()
+      console.log('Vextris developer panel enabled. Press ` (backtick) to toggle it.');
     }
+
+    // In case the user opened the page without ?dev, the panel still exists and can
+    // be toggled with the backtick key.
   }
 
   private renderBoardSigils(boardOffsetX: number, boardOffsetY: number): void {
