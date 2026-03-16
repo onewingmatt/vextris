@@ -162,12 +162,10 @@ export class AudioManager {
   private bgmUrl?: string
   private pendingBgmStart = false
   private bgmSynthNodes: AudioNode[] = []
-  private bgmSynthInterval?: number
   private lastPlayedAt = new Map<SfxId, number>()
   private sampleBuffers = new Map<SfxId, AudioBuffer>()
   private sampleLoadPromises = new Map<SfxId, Promise<void>>()
   private unlockBound = false
-  private isStartingBgm = false
 
   constructor() {
     this.settings = this.loadSettings()
@@ -200,26 +198,12 @@ export class AudioManager {
     this.bindUnlockListeners()
   }
 
-  private finishStartBgm() {
-    this.isStartingBgm = false
-  }
-
   unlock(): void {
     if (this.context && this.context.state === 'suspended') {
       void this.context.resume().catch(() => undefined)
     }
 
     // Retry BGM when the user interacts, in case autoplay was blocked.
-<<<<<<< HEAD
-    if (this.bgmAudio && this.bgmAudio.paused) {
-      const playPromise = this.bgmAudio.play()
-      if (playPromise && typeof playPromise.then === 'function') {
-        void playPromise.catch(() => undefined)
-      }
-    } else if (!this.bgmAudio && this.bgmUrl && !this.isStartingBgm) {
-      // If we never successfully created the audio element, try again.
-      this.startBgm(this.bgmUrl)
-=======
     if (this.bgmUrl) {
       this.pendingBgmStart = true
       this.tryPlayBgmNow()
@@ -241,82 +225,100 @@ export class AudioManager {
         .then(() => {
           this.pendingBgmStart = false
         })
-            if (this.bgmUrl) {
-              this.pendingBgmStart = true
-              this.tryPlayBgmNow()
-            }
-          }
-
-          private tryPlayBgmNow(): void {
-            if (!this.pendingBgmStart || !this.bgmAudio) return
-
-            // If the audio is already playing, nothing to do.
-            if (!this.bgmAudio.paused) {
-              this.pendingBgmStart = false
-              return
-            }
-
-            const playPromise = this.bgmAudio.play()
-            if (playPromise && typeof playPromise.then === 'function') {
-              void playPromise
-                .then(() => {
-                  this.pendingBgmStart = false
-                })
-                .catch(() => {
-                  // Keep pending so we can retry on the next user interaction.
-                  this.pendingBgmStart = true
-                })
-            } else {
-              this.pendingBgmStart = false
-            }
-          }
-          // Fallback to a simple synth-based BGM when the file is missing or fails to load.
-          this.startBgmSynth()
+        .catch(() => {
+          // Keep pending so we can retry on the next user interaction.
+          this.pendingBgmStart = true
         })
-        this.bgmAudio = audio
-        this.attachBgmToGraph(audio)
-      }
-
-      this.applySettingsToBgm()
-      const playPromise = this.bgmAudio.play()
-      if (playPromise && typeof playPromise.then === 'function') {
-        void playPromise.catch(() => {
-          // Keep the audio element around to retry on the next user interaction.
-        })
-      }
-    } finally {
-      this.finishStartBgm()
+    } else {
+      this.pendingBgmStart = false
     }
-=======
+  }
+
+  startBgm(url: string): void {
+    this.bgmUrl = url
+    this.stopBgm()
+    this.init()
+
+    if (url === 'synth') {
+      this.startBgmSynth()
+      return
+    }
+
+    if (!this.bgmAudio) {
+      const audio = new Audio(url)
+      audio.loop = true
+      audio.preload = 'auto'
+      audio.addEventListener('error', () => {
+        // Fallback to a simple synth-based BGM when the file is missing or fails to load.
+        this.startBgmSynth()
+      })
+      this.bgmAudio = audio
+      this.attachBgmToGraph(audio)
+    }
+
     this.applySettingsToBgm()
 
     // If the audio context is suspended, the play attempt will likely be blocked.
     // Mark that we want BGM so we can retry after an unlocked gesture.
     this.pendingBgmStart = true
     this.tryPlayBgmNow()
->>>>>>> 70080c8 (Fix BGM startup recursion and use public asset path for BGM)
   }
 
   stopBgm(): void {
-        this.bgmUrl = url
-        this.stopBgm()
-        this.init()
+    this.pendingBgmStart = false
+    if (this.bgmAudio) {
+      this.bgmAudio.pause()
+      this.bgmAudio.src = ''
+      this.bgmAudio = undefined
+    }
+    if (this.bgmSource) {
+      try { this.bgmSource.disconnect() } catch { /* ignore */ }
+      this.bgmSource = undefined
+    }
+    for (const node of this.bgmSynthNodes) {
+      try {
+        if (node instanceof OscillatorNode) node.stop()
+        node.disconnect()
+      } catch { /* ignore */ }
+    }
+    this.bgmSynthNodes = []
+  }
 
-        if (url === 'synth') {
-          this.startBgmSynth()
-          return
-        }
+  setMuted(muted: boolean): void {
+    this.settings.muted = muted
+    this.persistSettings()
+    this.applySettingsToGraph()
+    this.applySettingsToBgm()
+  }
 
-        this.applySettingsToBgm()
+  setVolume(channel: AudioChannel, value: number): void {
+    const v = this.clamp01(value)
+    if (channel === 'master') this.settings.master = v
+    else if (channel === 'music') this.settings.music = v
+    else if (channel === 'sfx') this.settings.sfx = v
+    else if (channel === 'vex') this.settings.vex = v
+    this.persistSettings()
+    this.applySettingsToGraph()
+    this.applySettingsToBgm()
+  }
 
-        // If the audio context is suspended, the play attempt will likely be blocked.
-        // Mark that we want BGM so we can retry after an unlocked gesture.
-        this.pendingBgmStart = true
-        this.tryPlayBgmNow()
   isChannelMuted(channel: MixChannel): boolean {
     if (channel === 'music') return this.settings.musicMuted
     if (channel === 'sfx') return this.settings.sfxMuted
     return this.settings.vexMuted
+  }
+
+  setChannelMuted(channel: MixChannel, muted: boolean): void {
+    if (channel === 'music') this.settings.musicMuted = muted
+    else if (channel === 'sfx') this.settings.sfxMuted = muted
+    else this.settings.vexMuted = muted
+    this.persistSettings()
+    this.applySettingsToGraph()
+    this.applySettingsToBgm()
+  }
+
+  toggleChannelMute(channel: MixChannel): void {
+    this.setChannelMuted(channel, !this.isChannelMuted(channel))
   }
 
   resetSettings(): void {
