@@ -42,12 +42,13 @@ type SfxOptions = {
   rank?: number
 }
 
-const STORAGE_KEY = 'vextris.audio.v1'
+const STORAGE_KEY = 'vextris.audio.v2'
+const LEGACY_STORAGE_KEY = 'vextris.audio.v1'
 const DEFAULT_SETTINGS: AudioSettings = {
   master: 0.85,
   music: 0.35,
   sfx: 0.72,
-  vex: 0.80,
+  vex: 1.0,
   muted: false,
   musicMuted: false,
   sfxMuted: false,
@@ -89,6 +90,11 @@ const COOLDOWN_MS: Record<SfxId, number> = {
   blackout: 1200,
   fog: 900,
   tremor: 520,
+  leadFingers: 60,
+  whiplash: 150,
+  mirage: 600,
+  jinxed: 450,
+  pressure: 500,
 }
 
 // Final per-event gain trims applied after the channel fader.
@@ -105,19 +111,20 @@ const SYNTH_EVENT_GAIN: Record<SfxId, number> = {
   uiClick: 0.42,
 
   // Vex-related cues are louder by default so they are audible during gameplay.
-  quicksand: 1.0,
-  amnesia: 1.0,
-  corruption: 1.0,
-  risingWarn: 1.0,
-  risingImpact: 1.0,
-  blackout: 1.0,
-  fog: 1.0,
-  tremor: 1.0,
-  leadFingers: 0.9,
-  whiplash: 1.0,
-  mirage: 0.7,
-  jinxed: 0.8,
-  pressure: 0.9,
+  // Raised to make them more noticeable compared to the base SFX channel.
+  quicksand: 1.5,
+  amnesia: 1.5,
+  corruption: 1.5,
+  risingWarn: 1.5,
+  risingImpact: 1.5,
+  blackout: 1.5,
+  fog: 1.5,
+  tremor: 1.5,
+  leadFingers: 1.3,
+  whiplash: 1.5,
+  mirage: 1.4,
+  jinxed: 1.4,
+  pressure: 1.5,
 }
 
 // Selected high-impact cues now prefer file assets, with synth fallback.
@@ -128,6 +135,8 @@ const SAMPLE_SFX_URL: Partial<Record<SfxId, string>> = {
   levelClear: 'audio/sfx/level-clear.wav',
   fail: 'audio/sfx/fail.wav',
   risingImpact: 'audio/sfx/rising-impact.wav',
+  // Reuse the impact asset for blackout so the lightning crack is clearly audible.
+  blackout: 'audio/sfx/rising-impact.wav',
 }
 
 const SAMPLE_EVENT_GAIN: Partial<Record<SfxId, number>> = {
@@ -137,10 +146,12 @@ const SAMPLE_EVENT_GAIN: Partial<Record<SfxId, number>> = {
   levelClear: 0.88,
   fail: 0.90,
   risingImpact: 0.92,
+  blackout: 1.15,
 }
 
 export class AudioManager {
   private settings: AudioSettings = { ...DEFAULT_SETTINGS }
+  private migratedLegacySettings = false
   private context: AudioContext | null = null
   private masterGain: GainNode | null = null
   private musicGain: GainNode | null = null
@@ -168,7 +179,7 @@ export class AudioManager {
 
     // Expose for debugging/inspection in browser console.
     if (typeof window !== 'undefined') {
-      ;(window as any).__vextrisAudioManager = this
+      window.__vextrisAudioManager = this
     }
 
     // Ensure music is audible by default (in case a previous session stored a muted state).
@@ -176,6 +187,12 @@ export class AudioManager {
       this.settings.music = 0.6
       this.persistSettings()
       this.applySettingsToGraph()
+    }
+
+    // One-time migration write for users coming from v1 settings.
+    if (this.migratedLegacySettings) {
+      this.persistSettings()
+      this.migratedLegacySettings = false
     }
 
     this.applySettingsToBgm()
@@ -342,7 +359,7 @@ export class AudioManager {
         this.playLineClearAccent(target, linesCleared)
         return
       }
-    } else if (this.tryPlaySample(id, target, options)) {
+    } else if (this.tryPlaySample(id, target, options) && id !== 'blackout') {
       return
     }
     const eventGain = this.createEventGain(target, SYNTH_EVENT_GAIN[id] ?? 1)
@@ -419,9 +436,12 @@ export class AudioManager {
         this.noise(eventGain, 0.11, 0.042, 200)
         break
       case 'blackout': {
-        const amp = 0.026 + rank * 0.0024
-        this.tone(eventGain, 80, 50, 0.38, amp, 'sawtooth')
-        this.noise(eventGain, 0.16, amp * 0.85, 320)
+        const amp = 0.03 + rank * 0.0028
+        // Thunder crack profile: bright transient + descending body + short rumble.
+        this.noise(eventGain, 0.09, amp * 1.3, 1400)
+        this.tone(eventGain, 920, 210, 0.16, amp * 1.0, 'square')
+        this.noise(eventGain, 0.2, amp * 0.75, 420)
+        this.tone(eventGain, 180, 70, 0.24, amp * 0.5, 'triangle', 0.05)
         break
       }
       case 'fog': {
@@ -663,7 +683,7 @@ export class AudioManager {
 
     // Expose for debugging/inspection in browser console.
     if (typeof window !== 'undefined') {
-      ;(window as any).__vextrisAudioContext = ctx
+      window.__vextrisAudioContext = ctx
     }
 
     return ctx
@@ -756,20 +776,34 @@ export class AudioManager {
   private loadSettings(): AudioSettings {
     if (typeof window === 'undefined') return { ...DEFAULT_SETTINGS }
 
+    const normalize = (parsed: Partial<AudioSettings>): AudioSettings => ({
+      master: this.clamp01(parsed.master ?? DEFAULT_SETTINGS.master),
+      music: this.clamp01(parsed.music ?? DEFAULT_SETTINGS.music),
+      sfx: this.clamp01(parsed.sfx ?? DEFAULT_SETTINGS.sfx),
+      vex: this.clamp01(parsed.vex ?? DEFAULT_SETTINGS.vex),
+      muted: Boolean(parsed.muted),
+      musicMuted: Boolean(parsed.musicMuted),
+      sfxMuted: Boolean(parsed.sfxMuted),
+      vexMuted: Boolean(parsed.vexMuted),
+    })
+
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY)
-      if (!raw) return { ...DEFAULT_SETTINGS }
-      const parsed = JSON.parse(raw) as Partial<AudioSettings>
-      return {
-        master: this.clamp01(parsed.master ?? DEFAULT_SETTINGS.master),
-        music: this.clamp01(parsed.music ?? DEFAULT_SETTINGS.music),
-        sfx: this.clamp01(parsed.sfx ?? DEFAULT_SETTINGS.sfx),
-        vex: this.clamp01(parsed.vex ?? DEFAULT_SETTINGS.vex),
-        muted: Boolean(parsed.muted),
-        musicMuted: Boolean(parsed.musicMuted),
-        sfxMuted: Boolean(parsed.sfxMuted),
-        vexMuted: Boolean(parsed.vexMuted),
+      if (raw) {
+        return normalize(JSON.parse(raw) as Partial<AudioSettings>)
       }
+
+      const legacyRaw = window.localStorage.getItem(LEGACY_STORAGE_KEY)
+      if (!legacyRaw) return { ...DEFAULT_SETTINGS }
+
+      const migrated = normalize(JSON.parse(legacyRaw) as Partial<AudioSettings>)
+      // Keep legacy users from landing in a "can't hear vex" state after migration.
+      if (!migrated.muted) {
+        migrated.vexMuted = false
+        migrated.vex = Math.max(migrated.vex, 0.7)
+      }
+      this.migratedLegacySettings = true
+      return migrated
     } catch {
       return { ...DEFAULT_SETTINGS }
     }
@@ -779,6 +813,7 @@ export class AudioManager {
     if (typeof window === 'undefined') return
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.settings))
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY)
     } catch {
       // Ignore quota/storage errors.
     }

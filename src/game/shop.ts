@@ -4,7 +4,7 @@
  * Renders 3 weighted main offers plus an optional Quicksand bonus slot.
  */
 
-import { STARTER_VEX_FACTORIES, upgradeVex, getQuicksandBonusMultiplier } from './vex'
+import { STARTER_VEX_FACTORIES, upgradeVex, getQuicksandBonusMultiplier, VEX_SYNERGIES } from './vex'
 import { audioManager } from './audio'
 import type { Vex, VexId, VexRank, VexRarity } from './vex'
 
@@ -148,22 +148,24 @@ const SHOP_CSS = `
   outline-offset: 2px;
 }
 
-#vextris-shop .card.color-vex {
-  border-color: #5e4830;
-}
-#vextris-shop .card.color-vex:hover,
-#vextris-shop .card.color-vex:focus-visible {
-  border-color: #c49b61;
-  box-shadow: 0 0 20px rgba(196, 155, 97, 0.34);
-}
-#vextris-shop .card.line-vex {
-  border-color: #34515d;
-}
-#vextris-shop .card.line-vex:hover,
-#vextris-shop .card.line-vex:focus-visible {
-  border-color: #89acb8;
-  box-shadow: 0 0 20px rgba(137, 172, 184, 0.32);
-}
+/* Rarity-based border colors for shop cards */
+#vextris-shop .card.color-vex.common { border-color: #5a5a5a; }
+#vextris-shop .card.color-vex.common:hover { border-color: #b4b4b4; box-shadow: 0 0 20px rgba(180, 180, 180, 0.34); }
+#vextris-shop .card.color-vex.uncommon { border-color: #3a5a3a; }
+#vextris-shop .card.color-vex.uncommon:hover { border-color: #64b464; box-shadow: 0 0 20px rgba(100, 180, 100, 0.34); }
+#vextris-shop .card.color-vex.rare { border-color: #3a4a5a; }
+#vextris-shop .card.color-vex.rare:hover { border-color: #648cdc; box-shadow: 0 0 20px rgba(100, 140, 220, 0.34); }
+#vextris-shop .card.color-vex.mythic { border-color: #5a3a5a; }
+#vextris-shop .card.color-vex.mythic:hover { border-color: #b464dc; box-shadow: 0 0 20px rgba(180, 100, 220, 0.34); }
+
+#vextris-shop .card.line-vex.common { border-color: #4a4a5a; }
+#vextris-shop .card.line-vex.common:hover { border-color: #b4b4b4; box-shadow: 0 0 20px rgba(180, 180, 180, 0.32); }
+#vextris-shop .card.line-vex.uncommon { border-color: #2a4a5a; }
+#vextris-shop .card.line-vex.uncommon:hover { border-color: #64b464; box-shadow: 0 0 20px rgba(100, 180, 100, 0.32); }
+#vextris-shop .card.line-vex.rare { border-color: #2a3a5a; }
+#vextris-shop .card.line-vex.rare:hover { border-color: #648cdc; box-shadow: 0 0 20px rgba(100, 140, 220, 0.32); }
+#vextris-shop .card.line-vex.mythic { border-color: #4a2a5a; }
+#vextris-shop .card.line-vex.mythic:hover { border-color: #b464dc; box-shadow: 0 0 20px rgba(180, 100, 220, 0.32); }
 
 #vextris-shop .card-label {
   font-size: 8px;
@@ -223,6 +225,23 @@ const SHOP_CSS = `
   border-top: 1px solid #352730;
   margin-top: 6px;
   padding-top: 8px;
+}
+
+#vextris-shop .synergy-hints {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #3a2c42;
+}
+
+#vextris-shop .synergy-hint {
+  font-size: 6px;
+  color: #8888bb;
+  line-height: 1.9;
+}
+
+#vextris-shop .synergy-hint.synergy-active {
+  color: #b4aaee;
+  font-weight: bold;
 }
 
 #vextris-shop .quicksand-slot {
@@ -541,12 +560,16 @@ function getCardFlavorText(vex: Vex, rank: VexRank): string {
   return vex.getFlavorText?.(rank) ?? ''
 }
 
+export type ShopResult = {
+  rankedUpVexId?: string;
+};
+
 export function showVexShop(
   activeVexes: Vex[],
   completedLevel: number,
   resolveCurrent: number,
   resolveMax: number,
-  onPick: (activeVexes: Vex[]) => void,
+  onPick: (result: ShopResult) => void,
 ): void {
   injectCSS()
   audioManager.playSfx('shopOpen')
@@ -562,7 +585,7 @@ export function showVexShop(
       <h2>The Crossroads</h2>
       <div class="shop-subtitle">SEAL ${completedLevel} BROKEN - CHOOSE YOUR PACT</div>
       <div class="cards">
-        ${offers.map((o, i) => renderCard(o, i)).join('')}
+        ${offers.map((o, i) => renderCard(o, i, activeVexes)).join('')}
       </div>
       ${renderQuicksandSlot(quicksandTiers, quicksandRank)}
     </div>
@@ -605,30 +628,60 @@ export function showVexShop(
       if (!offer) return
 
       audioManager.playSfx('uiClick')
-      applyOffer(offer, activeVexes)
+      const rankedUpVexId = applyOffer(offer, activeVexes)
 
       if (selectedQuicksandTier > 0) {
         applyQuicksandBonus(activeVexes, selectedQuicksandTier as 1 | 2 | 3)
       }
 
       overlay.remove()
-      onPick(activeVexes)
+      onPick({ rankedUpVexId })
     })
   })
 }
 
-function renderCard(offer: ShopOffer, idx: number): string {
+function getSynergyHintsHtml(offeredVexId: VexId, activeVexes: Vex[]): string {
+  const activeIds = new Set(activeVexes.map((v) => v.id as VexId))
+  const hints: string[] = []
+
+  for (const synergy of VEX_SYNERGIES) {
+    if (!synergy.requiredVexes.includes(offeredVexId)) continue
+    const partners = synergy.requiredVexes.filter((id) => id !== offeredVexId)
+    const allPartnersActive = partners.every((id) => activeIds.has(id))
+    if (allPartnersActive && partners.length > 0) {
+      hints.push(`<div class="synergy-hint synergy-active">&#9670; ${synergy.name}: +${(synergy.bonusMultiplier * 100).toFixed(0)}% ${synergy.kind} mult (SYNERGY READY)</div>`)
+    } else {
+      // Show hint if at least one partner is already active (or none yet — still show to inform)
+      const havePartners = partners.filter((id) => activeIds.has(id)).length
+      if (havePartners > 0 || activeVexes.length === 0) {
+        const missingNames = partners
+          .filter((id) => !activeIds.has(id))
+          .map((id) => STARTER_VEX_FACTORIES[id]?.(1)?.name ?? id)
+          .join(', ')
+        if (missingNames) {
+          hints.push(`<div class="synergy-hint">&#9670; ${synergy.name}: needs ${missingNames}</div>`)
+        }
+      }
+    }
+  }
+
+  return hints.join('')
+}
+
+function renderCard(offer: ShopOffer, idx: number, activeVexes: Vex[] = []): string {
   if (offer.type === 'new') {
     const factory = STARTER_VEX_FACTORIES[offer.vexId]
     const proto = factory(1)
     const kindClass = proto.kind === 'color' ? 'color-vex' : 'line-vex'
     const kindLabel = proto.kind === 'color' ? 'COLOUR VEX' : 'LINE VEX'
     const rarityLabel = normalizeRarityLabel(proto.rarity)
+    const rarityClass = proto.rarity
     const mult = proto.getMultiplier(DUMMY_CTX, 1)
     const flavorText = getCardFlavorText(proto, 1)
+    const synergyHints = getSynergyHintsHtml(offer.vexId, activeVexes)
 
     return `
-      <button type="button" class="card ${kindClass}" data-offer-idx="${idx}">
+      <button type="button" class="card ${kindClass} ${rarityClass}" data-offer-idx="${idx}">
         <span class="card-label">${kindLabel}</span>
         <span class="card-label rarity-badge">${rarityLabel}</span>
         <div class="card-name">${proto.name}</div>
@@ -636,6 +689,7 @@ function renderCard(offer: ShopOffer, idx: number): string {
         <div class="card-desc">${proto.description}</div>
         <div class="card-downside">! ${proto.downsideDescription}</div>
         <div class="card-mult">+${(mult * 100).toFixed(0)}% mult</div>
+        ${synergyHints ? `<div class="synergy-hints">${synergyHints}</div>` : ''}
         <div class="vex-flavor-text">${flavorText}</div>
       </button>
     `
@@ -645,14 +699,16 @@ function renderCard(offer: ShopOffer, idx: number): string {
   const kindClass = vex.kind === 'color' ? 'color-vex' : 'line-vex'
   const kindLabel = vex.kind === 'color' ? 'COLOUR VEX' : 'LINE VEX'
   const rarityLabel = normalizeRarityLabel(vex.rarity)
+  const rarityClass = vex.rarity
 
   const multBefore = vex.getMultiplier(DUMMY_CTX, fromRank)
   const multAfter = vex.getMultiplier(DUMMY_CTX, toRank)
   const multDelta = Math.max(0, multAfter - multBefore)
   const flavorText = getCardFlavorText(vex, toRank)
+  const synergyHints = getSynergyHintsHtml(vex.id as VexId, activeVexes)
 
   return `
-    <button type="button" class="card ${kindClass}" data-offer-idx="${idx}">
+    <button type="button" class="card ${kindClass} ${rarityClass}" data-offer-idx="${idx}">
       <span class="card-label rankup-badge">RANK UP</span>
       <span class="card-label">${kindLabel}</span>
       <span class="card-label rarity-badge">${rarityLabel}</span>
@@ -665,22 +721,24 @@ function renderCard(offer: ShopOffer, idx: number): string {
       <div class="card-desc">${vex.description}</div>
       <div class="card-downside">! ${vex.downsideDescription}</div>
       <div class="card-mult">+${(multDelta * 100).toFixed(0)}% more mult</div>
+      ${synergyHints ? `<div class="synergy-hints">${synergyHints}</div>` : ''}
       <div class="vex-flavor-text">${flavorText}</div>
     </button>
   `
 }
 
-function applyOffer(offer: ShopOffer, activeVexes: Vex[]): void {
+function applyOffer(offer: ShopOffer, activeVexes: Vex[]): string | undefined {
   if (offer.type === 'new') {
     const newVex = STARTER_VEX_FACTORIES[offer.vexId](1)
     activeVexes.push(newVex)
     newVex.onApply?.(1)
+    return undefined
   } else {
-    upgradeVex(offer.vex, offer.toRank)
+    return upgradeVex(offer.vex, offer.toRank)
   }
 }
 
-function applyQuicksandBonus(activeVexes: Vex[], ranksToAdd: 1 | 2 | 3): void {
+function applyQuicksandBonus(activeVexes: Vex[], ranksToAdd: 1 | 2 | 3): string | undefined {
   const quicksand = activeVexes.find((v) => v.id === 'quicksand')
 
   if (!quicksand) {
@@ -688,12 +746,12 @@ function applyQuicksandBonus(activeVexes: Vex[], ranksToAdd: 1 | 2 | 3): void {
     const newQuicksand = STARTER_VEX_FACTORIES.quicksand(targetRank)
     activeVexes.push(newQuicksand)
     newQuicksand.onApply?.(targetRank)
-    return
+    return undefined
   }
 
-  if (quicksand.rank >= 10) return
+  if (quicksand.rank >= 10) return undefined
   const targetRank = clampVexRank(quicksand.rank + ranksToAdd)
-  upgradeVex(quicksand, targetRank)
+  return upgradeVex(quicksand, targetRank)
 }
 
 let cssInjected = false

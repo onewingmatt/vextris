@@ -17,7 +17,7 @@ const config: Phaser.Types.Core.GameConfig = {
 const game = new Phaser.Game(config)
 
 // Expose the Phaser Game instance on window for debugging/demo automation
-;(window as any).game = game
+window.game = game
 
 // Ensure crisp pixels
 game.canvas.style.imageRendering = 'pixelated'

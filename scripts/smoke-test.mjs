@@ -227,6 +227,19 @@ async function runSmokeSuite(url, mode) {
     await page.waitForTimeout(300);
   }
 
+  // Instrument preview rendering to ensure NEXT/HOLD pieces are actually being drawn.
+  await page.evaluate(() => {
+    const scene = window.game?.scene?.keys?.GameScene;
+    if (!scene) return;
+    scene.__smokePreviewCalls = [];
+    const original = scene.renderPreviewPiece?.bind(scene);
+    if (!original) return;
+    scene.renderPreviewPiece = (...args) => {
+      scene.__smokePreviewCalls.push(args);
+      return original(...args);
+    };
+  });
+
   const bootstrap = await page.evaluate(() => {
     const scene = window.game?.scene?.keys?.GameScene;
     if (!scene) {
@@ -373,6 +386,33 @@ async function runSmokeSuite(url, mode) {
     };
   });
 
+  const previewVisibility = await page.evaluate(() => {
+    const scene = window.game?.scene?.keys?.GameScene;
+    if (!scene) {
+      return { passed: false, details: { reason: 'GameScene not found' } };
+    }
+
+    // If amnesia is active, previews may be intentionally hidden.
+    const amnesiaRank = scene.getAmnesiaRank?.() ?? 0;
+    const intensity = scene.getAmnesiaIntensity?.(amnesiaRank) ?? 0;
+    const hideNext = scene.shouldHideNextPreview?.(intensity);
+    const hideHold = scene.shouldHideHoldPreview?.(intensity);
+
+    const calls = Array.isArray(scene.__smokePreviewCalls) ? scene.__smokePreviewCalls.length : 0;
+    const called = calls > 0;
+
+    return {
+      passed: !hideNext && !hideHold && called,
+      details: {
+        amnesiaRank,
+        intensity,
+        hideNext,
+        hideHold,
+        previewCalls: calls,
+      },
+    };
+  });
+
   let quicksandBonusHex = {
     passed: true,
     details: { skipped: mode !== 'dev' },
@@ -384,7 +424,7 @@ async function runSmokeSuite(url, mode) {
       if (!scene) return;
       const { showVexShop } = await import('/src/game/shop.ts');
 
-      scene.activeVexes = [];
+      scene.activeVexes.splice(0, scene.activeVexes.length);
       scene.resolveCurrent = 80;
       scene.currentLevelParams = { ...scene.currentLevelParams, resolveMax: 100 };
       scene.currentLevel = 3;
@@ -396,8 +436,9 @@ async function runSmokeSuite(url, mode) {
         scene.currentLevel,
         scene.resolveCurrent,
         scene.currentLevelParams.resolveMax,
-        (activeVexes) => {
-          window.__quicksandSmokePicked = activeVexes.map((v) => `${v.id}:${v.rank}`);
+        () => {
+          // The shop callback does not receive the activeVexes array; read it from the scene instead.
+          window.__quicksandSmokePicked = scene.activeVexes.map((v) => `${v.id}:${v.rank}`);
           scene.gameState = 'PLAYING';
         },
       );
@@ -518,6 +559,80 @@ async function runSmokeSuite(url, mode) {
     };
   });
 
+  let resolveModifiers = {
+    passed: true,
+    details: { skipped: mode !== 'dev' },
+  };
+
+  if (mode === 'dev') {
+    resolveModifiers = await page.evaluate(async () => {
+      const scene = window.game?.scene?.keys?.GameScene;
+      if (!scene) {
+        return { passed: false, details: { reason: 'GameScene not found' } };
+      }
+
+      const { STARTER_VEX_FACTORIES } = await import('/src/game/vex.ts');
+      const previousVexes = [...scene.activeVexes];
+      const previousResolve = scene.resolveCurrent;
+      const previousParams = { ...scene.currentLevelParams };
+
+      scene.activeVexes.splice(0, scene.activeVexes.length);
+      const baseRealtime = scene.getRealtimeResolveDrainPerSecond?.();
+      const basePerPiece = scene.getPerPieceResolveDrain?.();
+      const baseRefund = scene.getResolveRefundForClear?.(4, 8);
+
+      scene.activeVexes.splice(
+        0,
+        scene.activeVexes.length,
+        STARTER_VEX_FACTORIES.quicksand(10),
+        STARTER_VEX_FACTORIES.pressure(10),
+        STARTER_VEX_FACTORIES.corruption(10),
+        STARTER_VEX_FACTORIES.rising_dread(10),
+        STARTER_VEX_FACTORIES.tremor(10),
+      );
+
+      const boostedRealtime = scene.getRealtimeResolveDrainPerSecond?.();
+      const boostedPerPiece = scene.getPerPieceResolveDrain?.();
+      const boostedRefund = scene.getResolveRefundForClear?.(4, 8);
+
+      scene.currentLevelParams = { ...scene.currentLevelParams, resolveMax: 100 };
+      scene.resolveCurrent = 99.5;
+      scene.applyResolveDelta?.(5);
+      const clampedHigh = scene.resolveCurrent;
+      scene.applyResolveDelta?.(-500);
+      const clampedLow = scene.resolveCurrent;
+
+      scene.activeVexes.splice(0, scene.activeVexes.length, ...previousVexes);
+      scene.resolveCurrent = previousResolve;
+      scene.currentLevelParams = previousParams;
+
+      return {
+        passed:
+          Number.isFinite(baseRealtime) &&
+          Number.isFinite(basePerPiece) &&
+          Number.isFinite(baseRefund) &&
+          Number.isFinite(boostedRealtime) &&
+          Number.isFinite(boostedPerPiece) &&
+          Number.isFinite(boostedRefund) &&
+          boostedRealtime > baseRealtime &&
+          boostedPerPiece > basePerPiece &&
+          boostedRefund > baseRefund &&
+          clampedHigh === 100 &&
+          clampedLow === 0,
+        details: {
+          baseRealtime,
+          boostedRealtime,
+          basePerPiece,
+          boostedPerPiece,
+          baseRefund,
+          boostedRefund,
+          clampedHigh,
+          clampedLow,
+        },
+      };
+    });
+  }
+
   let vexFactoryMatrix = {
     passed: true,
     details: { skipped: mode !== 'dev' },
@@ -584,8 +699,14 @@ async function runSmokeSuite(url, mode) {
   };
 
   if (mode === 'dev') {
-    await page.keyboard.press('Backquote');
-    await page.waitForSelector('#vextris-dev-panel.open', { timeout: 2000 });
+    // Use the exposed panel API so automation doesn't depend on keyboard focus.
+    await page.evaluate(() => {
+      const panel = window.__vextrisDevPanel
+      if (panel?.open) panel.open()
+      else if (panel?.toggle) panel.toggle()
+    })
+
+    await page.waitForSelector('#vextris-dev-panel.open', { timeout: 5000 });
     await page.click('#dev-clear-vexes');
     await page.click('[data-vex="fog"][data-rank="1"]');
     await page.waitForTimeout(200);
@@ -649,6 +770,109 @@ async function runSmokeSuite(url, mode) {
     };
   });
 
+  const allocationMicrobench = await page.evaluate(() => {
+    const scene = window.game?.scene?.keys?.GameScene;
+    if (!scene) {
+      return { passed: false, details: { reason: 'GameScene not found' } };
+    }
+    if (typeof scene.showFloatingText !== 'function' || typeof scene.renderFloatingTexts !== 'function' || typeof scene.clearLines !== 'function') {
+      return { passed: false, details: { reason: 'Required benchmark hooks unavailable' } };
+    }
+
+    const boardHeight = scene.board?.length ?? 0;
+    const boardWidth = boardHeight > 0 ? scene.board[0]?.length ?? 0 : 0;
+    if (boardWidth <= 0 || boardHeight <= 0) {
+      return { passed: false, details: { reason: 'Board dimensions unavailable' } };
+    }
+
+    if (Array.isArray(scene.floatingTextPool)) {
+      for (const ft of scene.floatingTextPool) {
+        ft.active = false;
+        ft.obj?.setVisible?.(false);
+      }
+    }
+
+    const floatBursts = 80;
+    const burstSize = 8;
+    const floatStart = performance.now();
+    let maxActiveFloating = 0;
+
+    for (let burst = 0; burst < floatBursts; burst++) {
+      const baseX = (scene.BOARD_OFFSET_X ?? 48) + (scene.BOARD_PIXEL_WIDTH ?? 320) / 2;
+      const baseY = (scene.BOARD_OFFSET_Y ?? 112) + ((burst % 6) * 20);
+      for (let i = 0; i < burstSize; i++) {
+        scene.showFloatingText(baseX + (i - 4) * 4, baseY, `+${burst}-${i}`, '#e6d2be', 1);
+      }
+
+      for (let step = 0; step < 6; step++) {
+        for (const ft of scene.floatingTextPool) {
+          if (!ft.active) continue;
+          ft.y -= 0.25;
+          ft.life -= 0.09;
+          if (ft.life <= 0) ft.active = false;
+        }
+        scene.renderFloatingTexts();
+      }
+
+      let activeNow = 0;
+      for (const ft of scene.floatingTextPool) {
+        if (ft.active) activeNow++;
+      }
+      if (activeNow > maxActiveFloating) maxActiveFloating = activeNow;
+    }
+
+    const floatBurstAvgMs = (performance.now() - floatStart) / floatBursts;
+    const floatingPoolSize = Array.isArray(scene.floatingTextPool) ? scene.floatingTextPool.length : -1;
+
+    const clearIterations = 120;
+    const clearStart = performance.now();
+    let totalClusters = 0;
+    let totalLines = 0;
+
+    for (let iter = 0; iter < clearIterations; iter++) {
+      scene.board = Array.from({ length: boardHeight }, () =>
+        Array.from({ length: boardWidth }, () => ({ filled: false, color: 0x111111 }))
+      );
+
+      for (let y = boardHeight - 1; y >= boardHeight - 4; y--) {
+        for (let x = 0; x < boardWidth; x++) {
+          const band = ((x + iter) % 3);
+          const color = band === 0 ? 0x44bbff : band === 1 ? 0xff8844 : 0x6fd08a;
+          scene.board[y][x] = { filled: true, color };
+        }
+      }
+
+      scene.clearingLines = [];
+      scene.scoringClusters = [];
+      scene.clearTimer = 0;
+      scene.clearLines();
+
+      totalLines += scene.clearingLines.length;
+      totalClusters += scene.scoringClusters.length;
+    }
+
+    const clearLinesAvgMs = (performance.now() - clearStart) / clearIterations;
+    const particlePoolSize = Array.isArray(scene.particlePool) ? scene.particlePool.length : -1;
+
+    return {
+      passed:
+        Number.isFinite(floatBurstAvgMs) &&
+        Number.isFinite(clearLinesAvgMs) &&
+        floatingPoolSize > 0 &&
+        floatingPoolSize <= 20 &&
+        particlePoolSize <= 80,
+      details: {
+        floatBurstAvgMs: Number(floatBurstAvgMs.toFixed(3)),
+        clearLinesAvgMs: Number(clearLinesAvgMs.toFixed(3)),
+        floatingPoolSize,
+        maxActiveFloating,
+        particlePoolSize,
+        totalLines,
+        totalClusters,
+      },
+    };
+  });
+
   const memory = await page.evaluate(() => {
     if (!performance.memory) {
       return null;
@@ -660,6 +884,45 @@ async function runSmokeSuite(url, mode) {
     };
   });
 
+  const leadFingersScaling = await page.evaluate(() => {
+    const scene = window.game?.scene?.keys?.GameScene;
+    if (!scene) {
+      return { passed: false, details: { reason: 'GameScene not found' } };
+    }
+    if (typeof scene.getLeadFingersPenaltyScale !== 'function') {
+      return { passed: false, details: { reason: 'getLeadFingersPenaltyScale not accessible' } };
+    }
+
+    // Save and restore currentLevel
+    const savedLevel = scene.currentLevel;
+
+    scene.currentLevel = 1;
+    const scaleAt1 = scene.getLeadFingersPenaltyScale();
+
+    scene.currentLevel = 10;
+    const scaleAt10 = scene.getLeadFingersPenaltyScale();
+
+    scene.currentLevel = 5;
+    const scaleAt5 = scene.getLeadFingersPenaltyScale();
+
+    scene.currentLevel = savedLevel;
+
+    const expectedAt1 = 0.4;
+    const expectedAt10 = 1.0;
+    const expectedAt5 = 0.4 + 0.6 * (4 / 9);
+
+    const tol = 0.001;
+    const ok1 = Math.abs(scaleAt1 - expectedAt1) < tol;
+    const ok10 = Math.abs(scaleAt10 - expectedAt10) < tol;
+    const ok5 = Math.abs(scaleAt5 - expectedAt5) < tol;
+    const monotonicOk = scaleAt1 < scaleAt5 && scaleAt5 < scaleAt10;
+
+    return {
+      passed: ok1 && ok10 && ok5 && monotonicOk,
+      details: { scaleAt1, scaleAt5, scaleAt10, ok1, ok5, ok10, monotonicOk },
+    };
+  });
+
   await browser.close();
 
   const tests = [
@@ -667,10 +930,14 @@ async function runSmokeSuite(url, mode) {
     { name: 'direct_line_clear', ...directLineClear },
     { name: 'keyboard_setup', ...keyboardSetup },
     { name: 'keyboard_line_clear_e2e', ...keyboardLineClear },
+    { name: 'preview_visibility', ...previewVisibility },
     { name: 'quicksand_bonus_hex', ...quicksandBonusHex },
     { name: 'vex_runtime_sanity', ...vexRuntimeSanity },
+    { name: 'resolve_modifiers', ...resolveModifiers },
     { name: 'vex_factory_matrix', ...vexFactoryMatrix },
     { name: 'devpanel_vex_toggle', ...devPanelVexToggle },
+    { name: 'allocation_microbench', ...allocationMicrobench },
+    { name: 'lead_fingers_scaling', ...leadFingersScaling },
     { name: 'perf_microbench', ...perf },
   ];
 

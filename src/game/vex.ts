@@ -116,13 +116,15 @@ export type VexRank = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
  * Upgrades a Vex to a new rank in-place and fires onRankChange.
  * Safe to call even if old rank === new rank.
  * If newRank > 10, clamps to 10 (raise VexRank type if you want higher stacking).
+ * Returns the vex ID if the rank was actually changed, undefined otherwise.
  */
-export function upgradeVex(vex: Vex, newRank: VexRank) {
+export function upgradeVex(vex: Vex, newRank: VexRank): string | undefined {
     const clampedRank = Math.min(newRank, 10) as VexRank;
-    if (vex.rank === clampedRank) return;
+    if (vex.rank === clampedRank) return undefined;
     const oldRank = vex.rank;
     vex.rank = clampedRank;
     vex.onRankChange?.(oldRank, clampedRank);
+    return vex.id;
 }
 
 export function getLeadFingersDASBonus(rank: VexRank): number {
@@ -182,7 +184,7 @@ export function getPressureTimeLimit(rank: VexRank): number {
 }
 
 export function getQuicksandBonusMultiplier(rank: VexRank): number {
-    return rank * 0.15
+    return rank * 0.25
 }
 
 type FlavorTextTiers = {
@@ -673,6 +675,177 @@ export const createVexPressure = (rank: VexRank): Vex => ({
         // GameScene resets/updates countdown limits from rank.
     },
 })
+
+// ---------------------------------------------------------------------------
+// Vex Synergies
+// ---------------------------------------------------------------------------
+
+/**
+ * Synergy definitions: when specific Vex combinations are active,
+ * they provide additional multiplier bonuses and unique effects.
+ */
+export type VexSynergy = {
+    /** Unique ID for this synergy */
+    id: string
+    /** Display name */
+    name: string
+    /** Required Vex IDs (all must be active) */
+    requiredVexes: VexId[]
+    /** Minimum total rank across all required vexes to activate */
+    minTotalRank: number
+    /** Additional multiplier bonus (additive to the appropriate bucket) */
+    bonusMultiplier: number
+    /** Which bucket this synergy affects */
+    kind: VexKind
+    /** Flavor text for the synergy */
+    flavorText: string
+    /** Optional: special effect callback (called when synergy activates) */
+    onActivate?: () => void
+}
+
+/**
+ * All defined Vex synergies. These are checked automatically during scoring.
+ */
+export const VEX_SYNERGIES: VexSynergy[] = [
+    {
+        id: 'blind_faith',
+        name: 'Blind Faith',
+        requiredVexes: ['blackout', 'fog'],
+        minTotalRank: 10,
+        bonusMultiplier: 0.5,
+        kind: 'color',
+        flavorText: 'When sight fails, the void speaks. The altar sees through your blindness.',
+    },
+    {
+        id: 'sinking_world',
+        name: 'Sinking World',
+        requiredVexes: ['quicksand', 'rising_dread'],
+        minTotalRank: 12,
+        bonusMultiplier: 0.6,
+        kind: 'line',
+        flavorText: 'The floor descends as the ceiling falls. There is no ground, only the descent.',
+    },
+    {
+        id: 'shattered_mind',
+        name: 'Shattered Mind',
+        requiredVexes: ['amnesia', 'corruption'],
+        minTotalRank: 10,
+        bonusMultiplier: 0.55,
+        kind: 'color',
+        flavorText: 'Memory rots. Color bleeds. The ritual continues without the augur.',
+    },
+    {
+        id: 'iron_blind',
+        name: 'Iron Blind',
+        requiredVexes: ['lead_fingers', 'blackout'],
+        minTotalRank: 10,
+        bonusMultiplier: 0.45,
+        kind: 'line',
+        flavorText: 'Heavy hands serve a blind master. The altar accepts trembling offerings.',
+    },
+    {
+        id: 'false_vision',
+        name: 'False Vision',
+        requiredVexes: ['mirage', 'fog'],
+        minTotalRank: 12,
+        bonusMultiplier: 0.5,
+        kind: 'color',
+        flavorText: 'Mist shows what cannot be. The void laughs at your certainty.',
+    },
+    {
+        id: 'chaos_descent',
+        name: 'Chaos Descent',
+        requiredVexes: ['jinxed', 'whiplash'],
+        minTotalRank: 10,
+        bonusMultiplier: 0.5,
+        kind: 'line',
+        flavorText: 'Broken offerings strike the altar. Chaos bleeds into order.',
+    },
+    {
+        id: 'trembling_void',
+        name: 'Trembling Void',
+        requiredVexes: ['tremor', 'blackout'],
+        minTotalRank: 12,
+        bonusMultiplier: 0.45,
+        kind: 'color',
+        flavorText: 'The earth shakes in darkness. Something wakes beneath the altar.',
+    },
+    {
+        id: 'pressure_cooker',
+        name: 'Pressure Cooker',
+        requiredVexes: ['pressure', 'quicksand'],
+        minTotalRank: 10,
+        bonusMultiplier: 0.5,
+        kind: 'color',
+        flavorText: 'Time crushes downward. The ritual accelerates toward its end.',
+    },
+    {
+        id: 'forgotten_rising',
+        name: 'Forgotten Rising',
+        requiredVexes: ['amnesia', 'rising_dread'],
+        minTotalRank: 12,
+        bonusMultiplier: 0.55,
+        kind: 'line',
+        flavorText: 'What you forget, they remember. The dead keep your name.',
+    },
+    {
+        id: 'corrupted_mirror',
+        name: 'Corrupted Mirror',
+        requiredVexes: ['corruption', 'mirage'],
+        minTotalRank: 14,
+        bonusMultiplier: 0.7,
+        kind: 'color',
+        flavorText: 'Reflections rot. The glass shows what you are becoming.',
+    },
+]
+
+/**
+ * Calculates all active synergies given the current Vex roster.
+ * Returns an array of active synergy bonuses.
+ */
+export function getActiveSynergies(activeVexes: Vex[]): { synergy: VexSynergy; totalRank: number }[] {
+    const activeSynergies: { synergy: VexSynergy; totalRank: number }[] = []
+    const vexMap = new Map(activeVexes.map(v => [v.id, v]))
+
+    for (const synergy of VEX_SYNERGIES) {
+        // Check if all required vexes are present
+        const requiredVexes = synergy.requiredVexes.map(id => vexMap.get(id)).filter((v): v is Vex => v !== undefined)
+        if (requiredVexes.length !== synergy.requiredVexes.length) continue
+
+        // Calculate total rank across all required vexes
+        const totalRank = requiredVexes.reduce((sum, v) => sum + v.rank, 0)
+        if (totalRank < synergy.minTotalRank) continue
+
+        // Synergy is active!
+        activeSynergies.push({ synergy, totalRank })
+    }
+
+    return activeSynergies
+}
+
+/**
+ * Calculates the total synergy bonus multiplier for a given kind.
+ */
+export function getSynergyMultiplier(activeVexes: Vex[], kind: VexKind): number {
+    const synergies = getActiveSynergies(activeVexes)
+    return synergies
+        .filter(({ synergy }) => synergy.kind === kind)
+        .reduce((sum, { synergy }) => sum + synergy.bonusMultiplier, 0)
+}
+
+/**
+ * Gets a formatted string describing active synergies for UI display.
+ */
+export function getSynergyDisplayText(activeVexes: Vex[]): string[] {
+    const synergies = getActiveSynergies(activeVexes)
+    if (synergies.length === 0) return []
+
+    return synergies.map(({ synergy }) => ({
+        name: synergy.name,
+        text: `${synergy.name} (+${Math.round(synergy.bonusMultiplier * 100)}% ${synergy.kind.toUpperCase()})`,
+        flavor: synergy.flavorText,
+    })).sort((a, b) => b.name.localeCompare(a.name)).map(s => s.text)
+}
 
 // ---------------------------------------------------------------------------
 // Registry

@@ -12,6 +12,7 @@
  */
 
 import { STARTER_VEX_FACTORIES, VexId, Vex, upgradeVex } from './vex'
+import { audioManager, SfxId } from './audio'
 
 /** Called whenever the panel changes the active Vex list */
 export type DevChangeCallback = (activeVexes: Vex[]) => void
@@ -66,7 +67,7 @@ const PANEL_CSS = `
   opacity: 0;
   pointer-events: none;
 }
-`
+
 #${PANEL_ID} h3 {
   margin: 0 0 10px;
   font-size: 10px;
@@ -174,6 +175,32 @@ const VEX_META: Record<VexId, { label: string; kind: 'color' | 'line' }> = {
   pressure: { label: 'Pressure', kind: 'color' },
 }
 
+const ALL_SFX: SfxId[] = [
+  'move',
+  'rotate',
+  'hold',
+  'hardDrop',
+  'lock',
+  'lineClear',
+  'levelClear',
+  'fail',
+  'shopOpen',
+  'uiClick',
+  'quicksand',
+  'amnesia',
+  'corruption',
+  'risingWarn',
+  'risingImpact',
+  'blackout',
+  'fog',
+  'tremor',
+  'leadFingers',
+  'whiplash',
+  'mirage',
+  'jinxed',
+  'pressure',
+]
+
 export class DevPanel {
   private el: HTMLElement
   private activeVexes: Vex[]
@@ -195,9 +222,22 @@ export class DevPanel {
     this.el = this.build()
     document.body.appendChild(this.el)
 
+    // Expose the panel globally so automated tests can open/close it reliably.
+    window.__vextrisDevPanel = this
+
     // Add a small always-visible toggle button so dev mode can be opened without needing a specific keyboard key.
     // This is especially useful for non-US keyboard layouts or when backtick is hard to reach.
     this.createToggleButton()
+  }
+
+  /** Open the dev panel. */
+  open(): void {
+    this.el.classList.add('open')
+  }
+
+  /** Close the dev panel. */
+  close(): void {
+    this.el.classList.remove('open')
   }
 
   /**
@@ -232,10 +272,6 @@ export class DevPanel {
     this.refreshUI()
   }
 
-  destroy(): void {
-    this.el.remove()
-  }
-
   // ---------------------------------------------------------------------------
   // Private
   // ---------------------------------------------------------------------------
@@ -253,6 +289,7 @@ export class DevPanel {
       <div class="dev-hint">Backtick (\`) to close</div>
       ${allIds.map(id => this.rowHTML(id)).join('')}
       <button class="clear-btn" id="dev-clear-vexes">CLEAR ALL</button>
+      <button class="clear-btn" id="dev-test-sfx">TEST SFX</button>
     `
 
     // Attach rank button handlers
@@ -264,6 +301,7 @@ export class DevPanel {
     }
 
     panel.querySelector('#dev-clear-vexes')?.addEventListener('click', () => this.clearAll())
+    panel.querySelector('#dev-test-sfx')?.addEventListener('click', () => this.testSfx())
 
     return panel
   }
@@ -332,6 +370,25 @@ export class DevPanel {
     for (const id of allIds) this.state.set(id, 0)
     this.refreshUI()
     this.onChange(this.activeVexes)
+  }
+
+  private async testSfx(): Promise<void> {
+    const btn = this.el.querySelector<HTMLButtonElement>('#dev-test-sfx')
+    if (!btn) return
+
+    btn.disabled = true
+    btn.textContent = 'TESTING...'
+
+    console.log('DevPanel: playing all SFX', ALL_SFX)
+    console.log('Audio settings:', audioManager.getSettings())
+
+    for (const id of ALL_SFX) {
+      audioManager.playSfx(id, { rank: 3, linesCleared: 2 })
+      await new Promise((resolve) => setTimeout(resolve, 220))
+    }
+
+    btn.textContent = 'TEST SFX'
+    btn.disabled = false
   }
 
   private refreshUI(): void {

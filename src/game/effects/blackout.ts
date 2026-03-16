@@ -16,6 +16,8 @@
  * runs even while the game loop is paused (e.g. during the shop).
  */
 
+import { audioManager } from '../audio'
+
 // ---------------------------------------------------------------------------
 // Rank configuration
 // ---------------------------------------------------------------------------
@@ -37,8 +39,10 @@ type BlackoutConfig = {
     fadeMs: number
 }
 
+type BlackoutRank = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
+
 /** Per-rank parameters matching vision.md spec. */
-const RANK_CONFIG: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, BlackoutConfig> = {
+const RANK_CONFIG: Record<BlackoutRank, BlackoutConfig> = {
     1: { peakOpacity: 0.42, flashOpacity: 0.08, flashMs: 50, flashGapMs: 35, holdMs: 420, intervalMs: 15_000, fadeMs: 220 },
     2: { peakOpacity: 0.50, flashOpacity: 0.09, flashMs: 52, flashGapMs: 36, holdMs: 500, intervalMs: 13_000, fadeMs: 210 },
     3: { peakOpacity: 0.58, flashOpacity: 0.10, flashMs: 54, flashGapMs: 38, holdMs: 560, intervalMs: 11_000, fadeMs: 200 },
@@ -152,10 +156,13 @@ function setFlashState(overlay: HTMLElement): void {
  *   4. Fade the overlay OUT (to 0) over fadeMs.
  *   5. Schedule the next cycle after intervalMs.
  */
-function runCycle(cfg: BlackoutConfig): void {
+function runCycle(rank: BlackoutRank, cfg: BlackoutConfig): void {
     const overlay = getOrCreateOverlay()
 
     // ── Step 1: Brief pre-blackout flash ────────────────────────────
+    // Tighten timing: play the 'thunder crack' sound the instant the flash starts.
+    audioManager.playSfx('blackout', { rank })
+
     setFlashState(overlay)
     overlay.style.transition = `opacity ${cfg.flashMs}ms ease-out`
     overlay.style.opacity = String(cfg.flashOpacity)
@@ -176,7 +183,7 @@ function runCycle(cfg: BlackoutConfig): void {
 
                 // ── Step 5: Schedule next cycle ──────────────────────
                 fadeOutTimer = setTimeout(() => {
-                    scheduleNextCycle(cfg)
+                    scheduleNextCycle(rank, cfg)
                 }, cfg.fadeMs)
             }, cfg.fadeMs + cfg.holdMs)
         }, cfg.flashGapMs)
@@ -187,10 +194,10 @@ function runCycle(cfg: BlackoutConfig): void {
  * Schedules the NEXT cycle after the current one's interval.
  * cycleTimer is used as the "pending" flag — if null, we've been disabled.
  */
-function scheduleNextCycle(cfg: BlackoutConfig): void {
+function scheduleNextCycle(rank: BlackoutRank, cfg: BlackoutConfig): void {
     cycleTimer = setTimeout(() => {
         cycleTimer = null
-        runCycle(cfg)
+        runCycle(rank, cfg)
     }, cfg.intervalMs)
 }
 
@@ -202,7 +209,7 @@ function scheduleNextCycle(cfg: BlackoutConfig): void {
  * Starts (or restarts) the Blackout effect at the given rank.
  * Safe to call multiple times — clears any existing cycle first.
  */
-export function enableBlackout(rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
+export function enableBlackout(rank: BlackoutRank): void {
     clearAllTimers()
     const cfg = RANK_CONFIG[rank]
 
@@ -213,7 +220,7 @@ export function enableBlackout(rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): vo
     const firstDelayMs = Math.max(900, Math.floor(cfg.intervalMs * 0.45))
     cycleTimer = setTimeout(() => {
         cycleTimer = null
-        runCycle(cfg)
+        runCycle(rank, cfg)
     }, firstDelayMs)
 }
 
