@@ -162,6 +162,7 @@ export class AudioManager {
   private bgmUrl?: string
   private pendingBgmStart = false
   private bgmSynthNodes: AudioNode[] = []
+  private bgmSynthInterval?: number
   private lastPlayedAt = new Map<SfxId, number>()
   private sampleBuffers = new Map<SfxId, AudioBuffer>()
   private sampleLoadPromises = new Map<SfxId, Promise<void>>()
@@ -268,16 +269,19 @@ export class AudioManager {
     this.pendingBgmStart = false
     if (this.bgmAudio) {
       this.bgmAudio.pause()
-      this.bgmAudio.src = ''
+      this.bgmAudio.currentTime = 0
       this.bgmAudio = undefined
-    }
-    if (this.bgmSource) {
-      try { this.bgmSource.disconnect() } catch { /* ignore */ }
       this.bgmSource = undefined
+    }
+    if (this.bgmSynthInterval !== undefined) {
+      clearInterval(this.bgmSynthInterval)
+      this.bgmSynthInterval = undefined
     }
     for (const node of this.bgmSynthNodes) {
       try {
-        if (node instanceof OscillatorNode) node.stop()
+        if (typeof (node as OscillatorNode).stop === 'function') {
+          ;(node as OscillatorNode).stop()
+        }
         node.disconnect()
       } catch { /* ignore */ }
     }
