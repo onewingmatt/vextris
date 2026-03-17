@@ -184,7 +184,13 @@ export function getPressureTimeLimit(rank: VexRank): number {
 }
 
 export function getQuicksandBonusMultiplier(rank: VexRank): number {
-    return rank * 0.25
+    // Supplemental bonus — deliberately weaker than main pact offerings.
+    // Tops out at +50% at rank 10, so it adds texture without dominating.
+    const values: Record<VexRank, number> = {
+        1: 0.04, 2: 0.07, 3: 0.10, 4: 0.13, 5: 0.17,
+        6: 0.21, 7: 0.26, 8: 0.32, 9: 0.40, 10: 0.50,
+    }
+    return values[rank]
 }
 
 type FlavorTextTiers = {
