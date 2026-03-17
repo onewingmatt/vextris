@@ -971,7 +971,7 @@ export class GameScene extends Phaser.Scene {
     this.gameOverBg = this.add.rectangle(gameOverX, gameOverY, 600, 200, 0x000000, 0.9)
       .setVisible(false).setDepth(9).setStrokeStyle(4, 0xc66a5c);
 
-    this.gameOverText = this.add.text(gameOverX, gameOverY - 40, 'GAME OVER', {
+    this.gameOverText = this.add.text(gameOverX, gameOverY - 40, 'THE SEAL HOLDS', {
       fontSize: '24px',
       fontFamily: '"Press Start 2P", monospace',
       color: '#c66a5c',
@@ -2427,7 +2427,7 @@ export class GameScene extends Phaser.Scene {
     this.gameState = 'GAMEOVER'
     this.saveRunHistory()
     this.gameOverBg.setVisible(true)
-    this.gameOverText.setText('RESOLVE DEPLETED!')
+    this.gameOverText.setText('RESOLVE FADES')
     this.gameOverText.setStyle({ color: '#c66a5c' })
     this.gameOverText.setVisible(true)
     audioManager.playSfx('fail')
@@ -2599,8 +2599,9 @@ export class GameScene extends Phaser.Scene {
       if (this.board[0][x].filled) {
         // Top row has a block — trigger game over via existing logic
         this.gameState = 'GAMEOVER';
+        this.saveRunHistory();
         this.gameOverBg.setVisible(true);
-        this.gameOverText.setText('GARBAGE OVERFLOW!');
+        this.gameOverText.setText('THE VEIL RISES');
         this.gameOverText.setStyle({ color: '#c66a5c' });
         this.gameOverText.setVisible(true);
         audioManager.playSfx('fail')

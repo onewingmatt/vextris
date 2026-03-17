@@ -687,11 +687,11 @@ function renderCard(offer: ShopOffer, idx: number, activeVexes: Vex[] = []): str
         <span class="card-label">${kindLabel}</span>
         <span class="card-label rarity-badge">${rarityLabel}</span>
         <div class="card-name">${proto.name}</div>
-        <div class="card-rank"><span class="new-rank">NEW - RANK 1</span></div>
+        <div class="card-rank"><span class="new-rank">BIND THIS PACT</span></div>
         <div class="vex-flavor-text">${flavorText}</div>
         <div class="card-desc">${proto.description}</div>
-        <div class="card-downside">! ${proto.downsideDescription}</div>
-        <div class="card-mult">+${(mult * 100).toFixed(0)}% mult</div>
+        <div class="card-downside">⸻ Cost: ${proto.downsideDescription}</div>
+        <div class="card-mult">+${(mult * 100).toFixed(0)}% tribute through</div>
         ${synergyHints ? `<div class="synergy-hints">${synergyHints}</div>` : ''}
       </button>
     `
@@ -711,19 +711,19 @@ function renderCard(offer: ShopOffer, idx: number, activeVexes: Vex[] = []): str
 
   return `
     <button type="button" class="card ${kindClass} ${rarityClass}" data-offer-idx="${idx}">
-      <span class="card-label rankup-badge">RANK UP</span>
+      <span class="card-label rankup-badge">DEEPEN THE MARK</span>
       <span class="card-label">${kindLabel}</span>
       <span class="card-label rarity-badge">${rarityLabel}</span>
       <div class="card-name">${vex.name}</div>
       <div class="card-rank">
         <span style="color:#9f8d7c">RANK ${fromRank}</span>
-        <span style="color:#e7d7c7"> -> </span>
+        <span style="color:#e7d7c7"> \u2192 </span>
         <span class="up-rank">RANK ${toRank}</span>
       </div>
       <div class="vex-flavor-text">${flavorText}</div>
       <div class="card-desc">${vex.description}</div>
-      <div class="card-downside">! ${vex.downsideDescription}</div>
-      <div class="card-mult">+${(multDelta * 100).toFixed(0)}% more mult</div>
+      <div class="card-downside">⸻ Cost: ${vex.downsideDescription}</div>
+      <div class="card-mult">+${(multDelta * 100).toFixed(0)}% more tribute through</div>
       ${synergyHints ? `<div class="synergy-hints">${synergyHints}</div>` : ''}
     </button>
   `
