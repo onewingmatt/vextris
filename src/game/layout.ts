@@ -1,0 +1,7 @@
+import { BOARD_WIDTH, BOARD_HEIGHT, BLOCK_SIZE } from './config'
+
+export const BOARD_OFFSET_X = 48
+export const BOARD_OFFSET_Y = 112
+
+export const BOARD_PIXEL_WIDTH = BOARD_WIDTH * BLOCK_SIZE
+export const BOARD_PIXEL_HEIGHT = BOARD_HEIGHT * BLOCK_SIZE

@@ -1034,6 +1034,7 @@ export class GameScene extends Phaser.Scene {
     const arm = 12
 
     this.graphics.lineStyle(1, sigilColor, 0.52)
+    this.graphics.beginPath()
 
     this.graphics.moveTo(boardOffsetX - pad, boardOffsetY + arm)
       .lineTo(boardOffsetX - pad, boardOffsetY - pad)
@@ -1635,6 +1636,7 @@ export class GameScene extends Phaser.Scene {
       this.graphics.fillRect(sweepX, rowY, sweepWidth, BLOCK_SIZE)
 
       this.graphics.lineStyle(2, themeColor, Math.min(0.9, 0.45 + linesCleared * 0.08) * pulse)
+      this.graphics.beginPath()
       this.graphics.moveTo(boardOffsetX, rowY + 1)
         .lineTo(boardOffsetX + boardWidthPx, rowY + 1)
         .stroke()
