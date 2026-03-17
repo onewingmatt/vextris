@@ -288,6 +288,7 @@ const SHOP_CSS = `
   cursor: pointer;
   transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
   font: inherit;
+  position: relative;
 }
 
 #vextris-shop .quicksand-tier:hover,
@@ -297,8 +298,23 @@ const SHOP_CSS = `
 }
 
 #vextris-shop .quicksand-tier.selected {
-  border-color: #caa56c;
-  box-shadow: 0 0 18px rgba(202, 165, 108, 0.32);
+  border-color: #caa56c !important;
+  background: linear-gradient(165deg, #221c10 0%, #1a1508 100%);
+  box-shadow: 0 0 22px rgba(202, 165, 108, 0.5), inset 0 0 12px rgba(202, 165, 108, 0.12);
+}
+
+#vextris-shop .quicksand-tier.selected .qs-tier-name {
+  color: #f4d98a;
+}
+
+#vextris-shop .quicksand-tier.selected::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  pointer-events: none;
+  border: 2px solid #caa56c;
+  box-shadow: inset 0 0 8px rgba(202, 165, 108, 0.18);
 }
 
 #vextris-shop .quicksand-tier.locked,
@@ -523,11 +539,12 @@ function buildQuicksandTierStates(
 }
 
 function renderQuicksandSlot(tiers: QuicksandTierState[], quicksandRank: VexRank | 0): string {
+  const rankLine = quicksandRank > 0 ? `Current Mark: Rank ${quicksandRank}` : 'Not yet bound'
   return `
     <div class="quicksand-slot">
-      <div class="quicksand-title">BONUS HEX: QUICKSAND (OPTIONAL)</div>
-      <div class="quicksand-subtitle">Resolve left lets you stack extra Quicksand ranks this shop. Pick at most one tier.</div>
-      <div class="quicksand-subtitle">Current Quicksand Rank: ${quicksandRank}</div>
+      <div class="quicksand-title">THE WEIGHT PACT (OPTIONAL)</div>
+      <div class="quicksand-subtitle">Remaining Resolve may be spent to deepen the burden. Choose at most one.</div>
+      <div class="quicksand-subtitle">${rankLine}</div>
       <div class="quicksand-tiers">
         ${tiers.map((tier) => renderQuicksandTierCard(tier)).join('')}
       </div>
@@ -551,9 +568,9 @@ function renderQuicksandTierCard(tier: QuicksandTierState): string {
       ${disabledAttr}
     >
       <div class="qs-tier-name">${title}</div>
-      <div class="qs-tier-meta">TARGET RANK: ${tier.resultingRank}</div>
-      <div class="qs-tier-mult">+${(tier.multDelta * 100).toFixed(0)}% LINE MULT</div>
-      <div class="qs-tier-lock">${tier.unlocked ? 'UNLOCKED' : tier.lockedReason}</div>
+      <div class="qs-tier-meta">MARK REACH: ${tier.resultingRank}</div>
+      <div class="qs-tier-mult">+${(tier.multDelta * 100).toFixed(0)}% tribute flow</div>
+      <div class="qs-tier-lock">${tier.unlocked ? '— available —' : tier.lockedReason}</div>
     </button>
   `
 }

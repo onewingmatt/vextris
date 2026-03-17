@@ -837,8 +837,8 @@ export class GameScene extends Phaser.Scene {
     this.hudTimeText = this.add.text(hudX, hudY + 20, '80 / 80', { ...hudValueFont, color: '#cfad72' }).setOrigin(0, 0)
     hudY += this.HUD_SECTION_STEP
 
-    // SPEED (gravity level)
-    this.add.text(hudX, hudY, 'SPEED', hudFont).setOrigin(0, 0)
+    // DESCENT (gravity level - how fast offerings fall; deeper = faster)
+    this.add.text(hudX, hudY, 'DESCENT', hudFont).setOrigin(0, 0)
     this.hudSpeedText = this.add.text(hudX, hudY + 20, '0', { ...hudValueFont, color: '#ba6b5f' }).setOrigin(0, 0)
 
     // NEXT/HOLD labels and preview wells
