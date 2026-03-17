@@ -21,19 +21,14 @@
  *   setFogHeight(px)     — update target height in board game-units (call each frame)
  *   disableFog()         — stop animation, hide canvas
  */
+import { BOARD_OFFSET_X, BOARD_OFFSET_Y, BOARD_PIXEL_WIDTH, BOARD_PIXEL_HEIGHT } from '../layout'
 
 // ---------------------------------------------------------------------------
 // Board geometry (game-unit coordinates, must match GameScene constants)
 // ---------------------------------------------------------------------------
 
-const BLOCK_SIZE = 32
-const BOARD_WIDTH = 10
-const BOARD_HEIGHT = 18
-const BOARD_OFFSET_X = 48    // board x in game units (left edge of board)
-const BOARD_OFFSET_Y = 112   // board y in game units (top edge of board)
-
-const BOARD_PX_W = BOARD_WIDTH * BLOCK_SIZE   // 320 game units
-const BOARD_PX_H = BOARD_HEIGHT * BLOCK_SIZE   // 576 game units
+const BOARD_PX_W = BOARD_PIXEL_WIDTH   // 320 game units
+const BOARD_PX_H = BOARD_PIXEL_HEIGHT   // 576 game units
 const FOG_RENDER_SCALE = 0.5
 const INTERNAL_W = Math.round(BOARD_PX_W * FOG_RENDER_SCALE)
 const INTERNAL_H = Math.round(BOARD_PX_H * FOG_RENDER_SCALE)
@@ -77,18 +72,18 @@ function paintLayer(layerCtx: CanvasRenderingContext2D, puffCount: number, alpha
   layerCtx.clearRect(0, 0, INTERNAL_W, INTERNAL_H)
   layerCtx.filter = 'blur(10px)'
 
-  for (let index = 0; index < puffCount; index++) {
-    const x = Math.random() * INTERNAL_W
-    const y = Math.random() * INTERNAL_H
-    const radius = 24 + Math.random() * 34
-    const scaleX = 1.7 + Math.random() * 1.5
-    const scaleY = 0.4 + Math.random() * 0.3
-    const angle = (Math.random() - 0.5) * 0.25
-    const rC = 178 + Math.floor(Math.random() * 38)
-    const gC = 185 + Math.floor(Math.random() * 30)
-    const bC = 202 + Math.floor(Math.random() * 38)
-    const alpha = (0.34 + Math.random() * 0.34) * alphaScale
-
+  const drawPuff = (
+    x: number,
+    y: number,
+    radius: number,
+    scaleX: number,
+    scaleY: number,
+    angle: number,
+    rC: number,
+    gC: number,
+    bC: number,
+    alpha: number,
+  ): void => {
     layerCtx.save()
     layerCtx.translate(x, y)
     layerCtx.rotate(angle)
@@ -104,6 +99,27 @@ function paintLayer(layerCtx: CanvasRenderingContext2D, puffCount: number, alpha
     layerCtx.fillStyle = grad
     layerCtx.fill()
     layerCtx.restore()
+  }
+
+  for (let index = 0; index < puffCount; index++) {
+    const x = Math.random() * INTERNAL_W
+    const y = Math.random() * INTERNAL_H
+    const radius = 24 + Math.random() * 34
+    const scaleX = 1.7 + Math.random() * 1.5
+    const scaleY = 0.4 + Math.random() * 0.3
+    const angle = (Math.random() - 0.5) * 0.25
+    const rC = 178 + Math.floor(Math.random() * 38)
+    const gC = 185 + Math.floor(Math.random() * 30)
+    const bC = 202 + Math.floor(Math.random() * 38)
+    const alpha = (0.34 + Math.random() * 0.34) * alphaScale
+
+    // Draw each puff as a toroidal tile so edges match exactly when wrapped.
+    // This removes visible seam lines at layer boundaries.
+    for (const wrapX of [-INTERNAL_W, 0, INTERNAL_W]) {
+      for (const wrapY of [-INTERNAL_H, 0, INTERNAL_H]) {
+        drawPuff(x + wrapX, y + wrapY, radius, scaleX, scaleY, angle, rC, gC, bC, alpha)
+      }
+    }
   }
 
   // Add a soft lower band so high-rank fog feels dense without many animated puffs.
@@ -375,17 +391,21 @@ function tick(ts: number): void {
 
   // ── Gradient mask ────────────────────────────────────────────────
   const safeHeight = Math.max(displayedHeight * FOG_RENDER_SCALE, 0)
-  const fadeZone = Math.max(6, safeHeight * 0.14)
+  const fadeZone = Math.min(Math.max(18, safeHeight * 0.22), Math.max(2, safeHeight))
   const topOfFog = h - safeHeight
 
   const topFrac = Math.max(0, Math.min(1, topOfFog / h))
-  const fadeFrac = Math.max(0, Math.min(1, (topOfFog + fadeZone) / h))
+  const fadeStartFrac = Math.max(0, Math.min(1, (topOfFog + fadeZone * 0.25) / h))
+  const fadeMidFrac = Math.max(0, Math.min(1, (topOfFog + fadeZone * 0.62) / h))
+  const fadeEndFrac = Math.max(0, Math.min(1, (topOfFog + fadeZone) / h))
 
   ctx.globalCompositeOperation = 'destination-in'
   const mask = ctx.createLinearGradient(0, 0, 0, h)
   mask.addColorStop(0, 'rgba(0,0,0,0)')
   mask.addColorStop(topFrac, 'rgba(0,0,0,0)')
-  mask.addColorStop(fadeFrac, 'rgba(0,0,0,0.92)')
+  mask.addColorStop(fadeStartFrac, 'rgba(0,0,0,0.22)')
+  mask.addColorStop(fadeMidFrac, 'rgba(0,0,0,0.70)')
+  mask.addColorStop(fadeEndFrac, 'rgba(0,0,0,0.96)')
   mask.addColorStop(1, 'rgba(0,0,0,1)')
   ctx.fillStyle = mask
   ctx.fillRect(0, 0, w, h)

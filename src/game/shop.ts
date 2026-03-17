@@ -222,9 +222,11 @@ const SHOP_CSS = `
   color: #9a8b80;
   font-style: italic;
   line-height: 1.8;
-  border-top: 1px solid #352730;
-  margin-top: 6px;
-  padding-top: 8px;
+  margin: 2px 0 4px;
+  padding: 6px 8px;
+  border: 1px solid #312734;
+  background: rgba(20, 15, 24, 0.58);
+  border-radius: 6px;
 }
 
 #vextris-shop .synergy-hints {
@@ -686,11 +688,11 @@ function renderCard(offer: ShopOffer, idx: number, activeVexes: Vex[] = []): str
         <span class="card-label rarity-badge">${rarityLabel}</span>
         <div class="card-name">${proto.name}</div>
         <div class="card-rank"><span class="new-rank">NEW - RANK 1</span></div>
+        <div class="vex-flavor-text">${flavorText}</div>
         <div class="card-desc">${proto.description}</div>
         <div class="card-downside">! ${proto.downsideDescription}</div>
         <div class="card-mult">+${(mult * 100).toFixed(0)}% mult</div>
         ${synergyHints ? `<div class="synergy-hints">${synergyHints}</div>` : ''}
-        <div class="vex-flavor-text">${flavorText}</div>
       </button>
     `
   }
@@ -718,11 +720,11 @@ function renderCard(offer: ShopOffer, idx: number, activeVexes: Vex[] = []): str
         <span style="color:#e7d7c7"> -> </span>
         <span class="up-rank">RANK ${toRank}</span>
       </div>
+      <div class="vex-flavor-text">${flavorText}</div>
       <div class="card-desc">${vex.description}</div>
       <div class="card-downside">! ${vex.downsideDescription}</div>
       <div class="card-mult">+${(multDelta * 100).toFixed(0)}% more mult</div>
       ${synergyHints ? `<div class="synergy-hints">${synergyHints}</div>` : ''}
-      <div class="vex-flavor-text">${flavorText}</div>
     </button>
   `
 }

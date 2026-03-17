@@ -193,6 +193,14 @@ type FlavorTextTiers = {
     consumption: string
 }
 
+/**
+ * Mystery-copy checklist for short Vex card text (description/downsideDescription):
+ * 1) Lead with fiction and consequence, not mechanics.
+ * 2) Keep to one clear sentence each; avoid system jargon where possible.
+ * 3) Put the cost in downsideDescription as an immediate chamber effect.
+ * 4) Reserve direct numeric clarity for dedicated stat/mult UI.
+ */
+
 const FLAVOR_TEXT_BY_VEX_ID = {
     blackout: {
         warning: 'The Lantern Sisters taught this pact in cellars of blind stone. They said the altar listens best when the last candle dies.',
@@ -281,8 +289,8 @@ export const createVexBlackout = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10):
     kind: 'color',
     rarity: 'common',
     rank,
-    description: 'The lights flicker; colour clusters score more.',
-    downsideDescription: 'Screen periodically darkens, obscuring the board.',
+    description: 'Blind the chamber and your offerings burn richer tribute.',
+    downsideDescription: 'Dark pulses repeatedly swallow the altar view.',
     getFlavorText: (r) => getFlavorTextForRank('blackout', r),
 
     getMultiplier(ctx, r) {
@@ -319,8 +327,8 @@ export const createVexFog = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex 
     kind: 'color',
     rarity: 'common',
     rank,
-    description: 'The depths are obscured; colour clusters score more.',
-    downsideDescription: 'Bottom rows are covered by fog.',
+    description: 'Let the mist climb and buried offerings feed deeper tribute.',
+    downsideDescription: 'Rising fog veils the lower altar steps.',
     getFlavorText: (r) => getFlavorTextForRank('fog', r),
 
     getMultiplier(ctx, r) {
@@ -358,8 +366,8 @@ export const createVexCorruption = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
     kind: 'color',
     rarity: 'mythic',
     rank,
-    description: 'Colours rot your best patterns; clusters score more.',
-    downsideDescription: 'Placed blocks mutate over time, targeting big clusters.',
+    description: 'Rot the pigments and corrupted patterns yield richer tribute.',
+    downsideDescription: 'Placed runes mutate over time, undoing stable formations.',
     getFlavorText: (r) => getFlavorTextForRank('corruption', r),
 
     getMultiplier(ctx, r) {
@@ -394,8 +402,8 @@ export const createVexQuicksand = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10)
     kind: 'line',
     rarity: 'uncommon',
     rank,
-    description: 'Pieces fall faster; line clears score more.',
-    downsideDescription: 'Base drop speed increases noticeably.',
+    description: 'Embrace the sinking pace and each cut drives harsher tribute.',
+    downsideDescription: 'Gravity quickens and runes fall with little mercy.',
     getFlavorText: (r) => getFlavorTextForRank('quicksand', r),
 
     getMultiplier(ctx, r) {
@@ -423,8 +431,8 @@ export const createVexAmnesia = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): 
     kind: 'line',
     rarity: 'uncommon',
     rank,
-    description: "You forget what's coming; line clears score more.",
-    downsideDescription: 'Next-piece preview (and later hold, colours) is hidden.',
+    description: 'Forget certainty and desperate cuts carve greater tribute.',
+    downsideDescription: 'Future omens fade from sight; memory tools are stripped away.',
     getFlavorText: (r) => getFlavorTextForRank('amnesia', r),
 
     getMultiplier(ctx, r) {
@@ -456,8 +464,8 @@ export const createVexRisingDread = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
     kind: 'line',
     rarity: 'uncommon',
     rank,
-    description: 'The dead rise beneath you; line clears score more.',
-    downsideDescription: 'Garbage rows periodically rise from the bottom.',
+    description: 'When the buried stir, each surviving cut earns harsher tribute.',
+    downsideDescription: 'Old offerings rise from below in hostile rows.',
     getFlavorText: (r) => getFlavorTextForRank('rising_dread', r),
 
     getMultiplier(ctx, r) {
@@ -495,8 +503,8 @@ export const createVexLeadFingers = (rank: VexRank): Vex => ({
     kind: 'line',
     rarity: 'common',
     rank,
-    description: 'Movement grows sluggish; line clears score more.',
-    downsideDescription: 'DAS and ARR delays become increasingly heavy.',
+    description: 'Heavy hands, harder vows; endured strain grants richer tribute.',
+    downsideDescription: 'Horizontal control grows heavy as DAS and ARR delays worsen.',
     getFlavorText: (r) => getFlavorTextForRank('lead_fingers', r),
 
     getMultiplier(ctx, r) {
@@ -527,8 +535,8 @@ export const createVexWhiplash = (rank: VexRank): Vex => ({
     kind: 'line',
     rarity: 'common',
     rank,
-    description: 'Hard drops blind you; line clears score more.',
-    downsideDescription: 'Manual hard-drops trigger brief blackouts.',
+    description: 'Violent descent feeds the rite and impact cuts deepen tribute.',
+    downsideDescription: 'Manual hard drops trigger brief blackout lashes.',
     getFlavorText: (r) => getFlavorTextForRank('whiplash', r),
 
     getMultiplier(ctx, r) {
@@ -559,8 +567,8 @@ export const createVexTremor = (rank: VexRank): Vex => ({
     kind: 'color',
     rarity: 'rare',
     rank,
-    description: 'The board shudders; colour clusters score more.',
-    downsideDescription: 'Periodic tremors shake your board and camera.',
+    description: 'When the altar shudders, steady offerings burn deeper tribute.',
+    downsideDescription: 'Periodic tremors shake the altar and your camera view.',
     getFlavorText: (r) => getFlavorTextForRank('tremor', r),
 
     getMultiplier(ctx, r) {
@@ -591,8 +599,8 @@ export const createVexMirage = (rank: VexRank): Vex => ({
     kind: 'color',
     rarity: 'mythic',
     rank,
-    description: 'Ghosts deceive you; colour clusters score more.',
-    downsideDescription: 'Ghost piece periodically lies about landing columns.',
+    description: 'False visions test conviction; true offerings yield richer tribute.',
+    downsideDescription: 'The ghost omen periodically lies about landing columns.',
     getFlavorText: (r) => getFlavorTextForRank('mirage', r),
 
     getMultiplier(ctx, r) {
@@ -623,8 +631,8 @@ export const createVexJinxed = (rank: VexRank): Vex => ({
     kind: 'line',
     rarity: 'rare',
     rank,
-    description: 'Spawns betray you; line clears score more.',
-    downsideDescription: 'Pieces spawn with random rotation, colour, and late-rank column jitter.',
+    description: 'Court disorder and survive it; chaotic cuts grant deeper tribute.',
+    downsideDescription: 'Spawns gain random rotation and colour, then column jitter at high rank.',
     getFlavorText: (r) => getFlavorTextForRank('jinxed', r),
 
     getMultiplier(ctx, r) {
@@ -655,8 +663,8 @@ export const createVexPressure = (rank: VexRank): Vex => ({
     kind: 'color',
     rarity: 'common',
     rank,
-    description: 'Every piece is timed; colour clusters score more.',
-    downsideDescription: 'Pieces auto hard-drop when their timer expires.',
+    description: 'Race the bell and hold form; timed offerings deepen tribute.',
+    downsideDescription: 'Each piece carries a drop timer and hard-drops on expiry.',
     getFlavorText: (r) => getFlavorTextForRank('pressure', r),
 
     getMultiplier(ctx, r) {
