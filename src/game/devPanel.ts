@@ -11,7 +11,7 @@
  *   devPanel.bindKey()        — attach window keydown listener for backtick
  */
 
-import { STARTER_VEX_FACTORIES, VexId, Vex, upgradeVex } from './vex'
+import { STARTER_VEX_FACTORIES, VexId, Vex, VexRank, upgradeVex } from './vex'
 import { audioManager, SfxId } from './audio'
 
 /** Called whenever the panel changes the active Vex list */
@@ -326,7 +326,7 @@ export class DevPanel {
     `
   }
 
-  private handleRankClick(id: VexId, rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
+  private handleRankClick(id: VexId, rank: VexRank): void {
     const cur = this.state.get(id) ?? 0
 
     if (cur === rank) {
@@ -350,7 +350,7 @@ export class DevPanel {
     this.onChange(this.activeVexes)
   }
 
-  private addVex(id: VexId, rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
+  private addVex(id: VexId, rank: VexRank): void {
     const vex = STARTER_VEX_FACTORIES[id](rank)
     this.activeVexes.push(vex)
     vex.onApply?.(rank)

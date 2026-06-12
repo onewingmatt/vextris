@@ -1,0 +1,321 @@
+/**
+ * shop.css - Styles for the between-level Vex Shop overlay.
+ */
+
+#vextris-shop {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(122, 66, 72, 0.26), rgba(0, 0, 0, 0) 45%),
+    radial-gradient(circle at 82% 80%, rgba(98, 77, 55, 0.2), rgba(0, 0, 0, 0) 42%),
+    rgba(7, 6, 11, 0.9);
+  z-index: 1000;
+  font-family: "Press Start 2P", monospace;
+  backdrop-filter: blur(4px);
+  touch-action: pan-y;
+}
+
+#vextris-shop::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.16;
+  background:
+    repeating-linear-gradient(45deg, rgba(216, 197, 177, 0.18) 0px, rgba(216, 197, 177, 0.18) 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 12px),
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(14, 10, 18, 0.66) 100%);
+  mix-blend-mode: screen;
+}
+
+#vextris-shop .shop-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  gap: 20px;
+  padding: 18px;
+  box-sizing: border-box;
+}
+
+#vextris-shop h2 {
+  color: #d8c5b1;
+  font-size: 20px;
+  letter-spacing: 2px;
+  margin: 0;
+  text-align: center;
+  text-shadow: 0 0 18px rgba(122, 66, 72, 0.55);
+}
+
+#vextris-shop .shop-subtitle {
+  color: #9f8d7c;
+  font-size: 9px;
+  letter-spacing: 1px;
+  margin-top: -10px;
+  text-align: center;
+}
+
+#vextris-shop .cards {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: min(100%, 760px);
+}
+
+#vextris-shop .card {
+  width: 200px;
+  min-height: 240px;
+  background: linear-gradient(165deg, #17111d 0%, #110d15 100%);
+  border: 2px solid #4a2c34;
+  border-radius: 10px;
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  box-sizing: border-box;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+#vextris-shop .card:hover,
+#vextris-shop .card:focus-visible {
+  transform: translateY(-6px) scale(1.03);
+  border-color: #b56557;
+  box-shadow: 0 0 20px rgba(181, 101, 87, 0.3);
+}
+
+#vextris-shop .card::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(216, 197, 177, 0.24);
+  box-shadow: 0 0 0 1px rgba(216, 197, 177, 0.12);
+}
+
+#vextris-shop .card:focus-visible {
+  outline: 2px solid #d8c5b1;
+  outline-offset: 2px;
+}
+
+/* Rarity-based border colors for shop cards */
+#vextris-shop .card.color-vex.common { border-color: #5a5a5a; }
+#vextris-shop .card.color-vex.common:hover { border-color: #b4b4b4; box-shadow: 0 0 20px rgba(180, 180, 180, 0.34); }
+#vextris-shop .card.color-vex.uncommon { border-color: #3a5a3a; }
+#vextris-shop .card.color-vex.uncommon:hover { border-color: #64b464; box-shadow: 0 0 20px rgba(100, 180, 100, 0.34); }
+#vextris-shop .card.color-vex.rare { border-color: #3a4a5a; }
+#vextris-shop .card.color-vex.rare:hover { border-color: #648cdc; box-shadow: 0 0 20px rgba(100, 140, 220, 0.34); }
+#vextris-shop .card.color-vex.mythic { border-color: #5a3a5a; }
+#vextris-shop .card.color-vex.mythic:hover { border-color: #b464dc; box-shadow: 0 0 20px rgba(180, 100, 220, 0.34); }
+
+#vextris-shop .card.line-vex.common { border-color: #4a4a5a; }
+#vextris-shop .card.line-vex.common:hover { border-color: #b4b4b4; box-shadow: 0 0 20px rgba(180, 180, 180, 0.32); }
+#vextris-shop .card.line-vex.uncommon { border-color: #2a4a5a; }
+#vextris-shop .card.line-vex.uncommon:hover { border-color: #64b464; box-shadow: 0 0 20px rgba(100, 180, 100, 0.32); }
+#vextris-shop .card.line-vex.rare { border-color: #2a3a5a; }
+#vextris-shop .card.line-vex.rare:hover { border-color: #648cdc; box-shadow: 0 0 20px rgba(100, 140, 220, 0.32); }
+#vextris-shop .card.line-vex.mythic { border-color: #4a2a5a; }
+#vextris-shop .card.line-vex.mythic:hover { border-color: #b464dc; box-shadow: 0 0 20px rgba(180, 100, 220, 0.32); }
+
+#vextris-shop .card-label {
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 4px;
+  display: inline-block;
+  align-self: flex-start;
+}
+.color-vex .card-label { background: #2f2314; color: #caa56c; }
+.line-vex .card-label { background: #162735; color: #89acb8; }
+.rankup-badge { background: #32203d; color: #c39bd0; }
+.rarity-badge { background: #211a22; color: #c9b8aa; margin-top: 2px; }
+
+#vextris-shop .card-name {
+  font-size: 11px;
+  color: #f0e6d8;
+  line-height: 1.6;
+  padding-right: 4px;
+}
+
+#vextris-shop .card-rank {
+  font-size: 9px;
+  color: #9f8d7c;
+}
+#vextris-shop .card-rank .new-rank { color: #cfa36b; }
+#vextris-shop .card-rank .up-rank { color: #c39bd0; }
+
+#vextris-shop .card-desc {
+  font-size: 8px;
+  color: #c1b2a4;
+  line-height: 1.8;
+  flex: 1;
+  padding: 4px 0;
+}
+
+#vextris-shop .card-downside {
+  font-size: 7px;
+  color: #b56f65;
+  line-height: 1.7;
+  border-top: 1px solid #352730;
+  padding-top: 8px;
+}
+
+#vextris-shop .card-mult {
+  font-size: 8px;
+  color: #d7b172;
+  align-self: flex-end;
+}
+
+#vextris-shop .vex-flavor-text {
+  font-size: 7px;
+  color: #9a8b80;
+  font-style: italic;
+  line-height: 1.8;
+  margin: 2px 0 4px;
+  padding: 6px 8px;
+  border: 1px solid #312734;
+  background: rgba(20, 15, 24, 0.58);
+  border-radius: 6px;
+}
+
+#vextris-shop .synergy-hints {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #3a2c42;
+}
+
+#vextris-shop .synergy-hint {
+  font-size: 6px;
+  color: #8888bb;
+  line-height: 1.9;
+}
+
+#vextris-shop .synergy-hint.synergy-active {
+  color: #b4aaee;
+  font-weight: bold;
+}
+
+#vextris-shop .quicksand-slot {
+  width: min(100%, 760px);
+  background: rgba(20, 16, 25, 0.9);
+  border: 2px solid #5b4636;
+  border-radius: 10px;
+  padding: 12px;
+  box-sizing: border-box;
+  box-shadow: inset 0 0 18px rgba(121, 66, 72, 0.12);
+}
+
+#vextris-shop .quicksand-title {
+  font-size: 10px;
+  color: #e2c8ab;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+#vextris-shop .quicksand-subtitle {
+  font-size: 7px;
+  color: #b39d89;
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+#vextris-shop .quicksand-tiers {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#vextris-shop .quicksand-tier {
+  min-width: 132px;
+  flex: 1;
+  border: 2px solid #6c5b4b;
+  border-radius: 8px;
+  background: #191620;
+  color: #d8cec0;
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  font: inherit;
+  position: relative;
+}
+
+#vextris-shop .quicksand-tier:hover,
+#vextris-shop .quicksand-tier:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 0 14px rgba(202, 165, 108, 0.24);
+}
+
+#vextris-shop .quicksand-tier.selected {
+  border-color: #caa56c !important;
+  background: linear-gradient(165deg, #221c10 0%, #1a1508 100%);
+  box-shadow: 0 0 22px rgba(202, 165, 108, 0.5), inset 0 0 12px rgba(202, 165, 108, 0.12);
+}
+
+#vextris-shop .quicksand-tier.selected .qs-tier-name {
+  color: #f4d98a;
+}
+
+#vextris-shop .quicksand-tier.selected::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  pointer-events: none;
+  border: 2px solid #caa56c;
+  box-shadow: inset 0 0 8px rgba(202, 165, 108, 0.18);
+}
+
+#vextris-shop .quicksand-tier.locked,
+#vextris-shop .quicksand-tier:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+#vextris-shop .qs-tier-name {
+  font-size: 8px;
+  color: #f4e7d4;
+  margin-bottom: 8px;
+}
+
+#vextris-shop .qs-tier-meta,
+#vextris-shop .qs-tier-mult,
+#vextris-shop .qs-tier-lock {
+  font-size: 7px;
+  line-height: 1.6;
+}
+
+#vextris-shop .qs-tier-lock {
+  color: #cf8075;
+}
+
+@media (max-width: 700px) {
+  #vextris-shop .cards {
+    gap: 12px;
+  }
+
+  #vextris-shop .card {
+    width: min(100%, 360px);
+    min-height: 0;
+    padding: 14px 12px;
+  }
+
+  #vextris-shop .quicksand-tier {
+    min-width: 100%;
+  }
+}

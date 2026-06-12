@@ -49,6 +49,10 @@ export type VexKind = 'color' | 'line'
 /** Rarity used by shop weighted-offer generation. */
 export type VexRarity = 'common' | 'uncommon' | 'rare' | 'mythic'
 
+export type VexRankedCallback = (rank: VexRank) => void
+
+export type VexRankChangeCallback = (oldRank: VexRank, newRank: VexRank) => void
+
 /**
  * A Vex definition. Instantiate via the factory functions below.
  * onApply / onRankChange are intentionally stubs — the GameScene wires
@@ -69,21 +73,21 @@ export type Vex = {
      * given the current scoring context and rank.
      * Return 0 if the context doesn't qualify (e.g. no lines cleared).
      */
-    getMultiplier: (ctx: ScoringContext, rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10) => number
+    getMultiplier: (ctx: ScoringContext, rank: VexRank) => number
 
     /**
      * Called once when this Vex first becomes active (or when it is loaded).
      * Should start any repeating timers or visual effects.
      * @stub — implement the body in GameScene after calling onApply?.()
      */
-    onApply?: (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10) => void
+    onApply?: VexRankedCallback
 
     /**
      * Called when the Vex's rank is upgraded.
      * Should adjust existing timers/effects to match the new rank.
      * @stub — implement the body in GameScene after calling onRankChange?.()
      */
-    onRankChange?: (oldRank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, newRank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10) => void
+    onRankChange?: VexRankChangeCallback
 }
 
 export type MirageConfig = {
@@ -289,7 +293,7 @@ function getFlavorTextForRank(vexId: keyof typeof FLAVOR_TEXT_BY_VEX_ID, rank: V
  * Downside: screen periodically darkens, obscuring the board.
  * Reward:   colour clusters score more.
  */
-export const createVexBlackout = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex => ({
+export const createVexBlackout = (rank: VexRank): Vex => ({
     id: 'blackout',
     name: 'Vex of Blackout',
     kind: 'color',
@@ -301,7 +305,7 @@ export const createVexBlackout = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10):
 
     getMultiplier(ctx, r) {
         if (ctx.totalClusterPoints === 0) return 0
-        const values: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, number> = {
+        const values: Record<VexRank, number> = {
             1: 0.2, 2: 0.5, 3: 1.0, 4: 1.5, 5: 2.0, 6: 2.5, 7: 3.0, 8: 3.5, 9: 4.0, 10: 4.5
         }
         return values[r]
@@ -327,7 +331,7 @@ export const createVexBlackout = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10):
  * Downside: bottom rows are covered by fog (hidden from the player).
  * Reward:   colour clusters score more.
  */
-export const createVexFog = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex => ({
+export const createVexFog = (rank: VexRank): Vex => ({
     id: 'fog',
     name: 'Vex of Fog',
     kind: 'color',
@@ -339,7 +343,7 @@ export const createVexFog = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex 
 
     getMultiplier(ctx, r) {
         if (ctx.totalClusterPoints === 0) return 0
-        const values: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, number> = {
+        const values: Record<VexRank, number> = {
             1: 0.3, 2: 0.6, 3: 1.2, 4: 1.8, 5: 2.4, 6: 3.0, 7: 3.6, 8: 4.2, 9: 4.8, 10: 5.4
         }
         return values[r]
@@ -366,7 +370,7 @@ export const createVexFog = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex 
  *           disrupting cluster formation.
  * Reward:   colour clusters score more.
  */
-export const createVexCorruption = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex => ({
+export const createVexCorruption = (rank: VexRank): Vex => ({
     id: 'corruption',
     name: 'Vex of Corruption',
     kind: 'color',
@@ -378,7 +382,7 @@ export const createVexCorruption = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
 
     getMultiplier(ctx, r) {
         if (ctx.totalClusterPoints === 0) return 0
-        const values: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, number> = {
+        const values: Record<VexRank, number> = {
             1: 0.35, 2: 0.8, 3: 1.45, 4: 2.1, 5: 2.75, 6: 3.4, 7: 4.05, 8: 4.7, 9: 5.35, 10: 6.0
         }
         return values[r]
@@ -402,7 +406,7 @@ export const createVexCorruption = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
  * Downside: base drop speed (gravity) increases significantly.
  * Reward:   line clears score more.
  */
-export const createVexQuicksand = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex => ({
+export const createVexQuicksand = (rank: VexRank): Vex => ({
     id: 'quicksand',
     name: 'Vex of Quicksand',
     kind: 'line',
@@ -431,7 +435,7 @@ export const createVexQuicksand = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10)
  * Downside: next-piece preview is hidden; at higher ranks hold and colours too.
  * Reward:   line clears score more.
  */
-export const createVexAmnesia = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex => ({
+export const createVexAmnesia = (rank: VexRank): Vex => ({
     id: 'amnesia',
     name: 'Vex of Amnesia',
     kind: 'line',
@@ -443,7 +447,7 @@ export const createVexAmnesia = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): 
 
     getMultiplier(ctx, r) {
         if (ctx.linesCleared === 0) return 0
-        const values: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, number> = {
+        const values: Record<VexRank, number> = {
             1: 0.3, 2: 0.7, 3: 1.3, 4: 1.95, 5: 2.6, 6: 3.25, 7: 3.9, 8: 4.55, 9: 5.2, 10: 5.85
         }
         const levelScale = 0.65 + Math.max(0, Math.min(1, (ctx.currentLevel - 1) / 9)) * 0.35
@@ -464,7 +468,7 @@ export const createVexAmnesia = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): 
  * Downside: garbage rows periodically rise from the bottom.
  * Reward:   line clears score more.
  */
-export const createVexRisingDread = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): Vex => ({
+export const createVexRisingDread = (rank: VexRank): Vex => ({
     id: 'rising_dread',
     name: 'Vex of Rising Dread',
     kind: 'line',
@@ -476,7 +480,7 @@ export const createVexRisingDread = (rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
 
     getMultiplier(ctx, r) {
         if (ctx.linesCleared === 0) return 0
-        const values: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, number> = {
+        const values: Record<VexRank, number> = {
             1: 0.2, 2: 0.6, 3: 1.2, 4: 1.8, 5: 2.4, 6: 3.0, 7: 3.6, 8: 4.2, 9: 4.8, 10: 5.4
         }
         return values[r]

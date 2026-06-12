@@ -18,6 +18,8 @@ import {
   BLOCK_COLORS,
   LevelParams,
   getLevelParams,
+  SRS_WALL_KICKS,
+  SRS_REVERSE_WALL_KICKS,
 } from '../config'
 import {
   Vex,
@@ -95,9 +97,9 @@ export class GameScene extends Phaser.Scene {
   private score = 0              // total run score
   private level = INITIAL_LEVEL  // gravity level (separate from progression level)
   private lines = 0
-  private gravityTimer = 0
-  private gravityDelay = GRAVITY_TABLE[0]
-    private clearingLines: number[] = []
+  private gravityTimer = 0;
+  private gravityDelay = GRAVITY_TABLE[0];
+  private clearingLines: number[] = [];
   private scoringClusters: { blocks: { x: number, y: number }[], color: number }[] = []
   private clearTimer = 0
 
@@ -123,7 +125,7 @@ export class GameScene extends Phaser.Scene {
   private gameState: 'MENU' | 'PLAYING' | 'PAUSED' | 'SHOP' | 'GAMEOVER' = 'MENU'
 
   /** Timer IDs for Vex effects (e.g., Rising Dread's garbage timer). Keyed by vex.id. */
-  private vexIntervals: Map<string, NodeJS.Timeout> = new Map()
+  private vexIntervals: Map<string, ReturnType<typeof setTimeout>> = new Map()
   private vexTimerGenerations: Map<string, number> = new Map()
 
   // Object pools for particles and floating texts to avoid allocation churn
@@ -2679,7 +2681,7 @@ export class GameScene extends Phaser.Scene {
    * Starts the Rising Dread timer for the given rank.
    * Shows warning, then pushes garbage after 1 second, repeating every intervalSeconds.
    */
-  private startRisingDreadTimer(rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
+  private startRisingDreadTimer(rank: VexRank): void {
     const intervalSeconds = Math.max(30 - 2 * (rank - 1), 10)
     const gapsPerRow = Math.max(3 - Math.floor((rank - 1) / 3), 1)
     const vexId = 'rising_dread'

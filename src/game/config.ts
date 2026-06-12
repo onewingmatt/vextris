@@ -103,6 +103,7 @@ export interface Piece {
   shape: number[][]
   colors: number[][]
   position: Position
+  rotationState: 0 | 1 | 2 | 3 /** SRS rotation state */
 }
 
 export interface BoardState {
@@ -142,4 +143,57 @@ const LEVEL_TABLE: LevelParams[] = [
 export function getLevelParams(level: number): LevelParams {
   const clamped = Math.max(1, Math.min(level, LEVEL_TABLE.length))
   return LEVEL_TABLE[clamped - 1]
+}
+
+// ---------------------------------------------------------------------------
+// SRS Wall Kick Tables
+// ---------------------------------------------------------------------------
+
+// Each sub-array is a list of [dx, dy] kick offsets to try in order.
+// Indices: 0=R, 1=2, 2=L (forward CW rotation states).
+export const SRS_WALL_KICKS: Record<string, [number, number][][]> = {
+  standard: [
+    // 0->R
+    [[ 0, 0], [-1, 0], [-1,  1], [ 0, -2], [-1, -2]],
+    // R->2
+    [[ 0, 0], [ 1, 0], [ 1, -1], [ 0,  2], [ 1,  2]],
+    // 2->L (CW from 180)
+    [[ 0, 0], [ 1, 0], [ 1,  1], [ 0, -2], [ 1, -2]],
+    // L->0 (CW from 270)
+    [[ 0, 0], [-1, 0], [-1, -1], [ 0,  2], [-1,  2]],
+  ],
+  iPiece: [
+    // 0->R
+    [[ 0, 0], [-2, 0], [ 1, 0], [-2,  1], [ 1, -2]],
+    // R->2
+    [[ 0, 0], [-1, 0], [ 2, 0], [-1, -2], [ 2,  1]],
+    // 2->L
+    [[ 0, 0], [ 2, 0], [-1, 0], [ 2, -1], [-1,  2]],
+    // L->0
+    [[ 0, 0], [ 1, 0], [-2, 0], [ 1,  2], [-2, -1]],
+  ],
+}
+
+// Reverse kick tables for CCW rotation (state transitions 0->L, L->2, 2->R, R->0).
+export const SRS_REVERSE_WALL_KICKS: Record<string, [number, number][][]> = {
+  standard: [
+    // 0->L
+    [[ 0, 0], [-1, 0], [-1, -1], [ 0,  2], [-1,  2]],
+    // L->2
+    [[ 0, 0], [-1, 0], [-1, -1], [ 0,  2], [-1,  2]],
+    // 2->R
+    [[ 0, 0], [ 1, 0], [ 1,  1], [ 0, -2], [ 1, -2]],
+    // R->0
+    [[ 0, 0], [ 1, 0], [ 1, -1], [ 0,  2], [ 1,  2]],
+  ],
+  iPiece: [
+    // 0->L
+    [[ 0, 0], [-1, 0], [ 2, 0], [-1, -2], [ 2,  1]],
+    // L->2
+    [[ 0, 0], [-2, 0], [ 1, 0], [-2,  1], [ 1, -2]],
+    // 2->R
+    [[ 0, 0], [ 2, 0], [-1, 0], [ 2, -1], [-1,  2]],
+    // R->0
+    [[ 0, 0], [ 1, 0], [-2, 0], [ 1,  2], [-2, -1]],
+  ],
 }
