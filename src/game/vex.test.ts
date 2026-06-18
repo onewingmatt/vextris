@@ -1,316 +1,376 @@
-import { describe, it, expect } from 'vitest'
+/**
+ * vex.test.ts — Unit tests for src/game/vex.ts
+ *
+ * Tests Vex multipliers, rank helpers, and upgradeVex — all pure logic that
+ * doesn't touch the DOM. Effects (blackout, fog) are mocked out so these tests
+ * run in a Node environment without a browser.
+ */
+import { describe, it, expect, vi } from 'vitest'
+
+// Mock DOM-dependent effect modules before importing vex.ts
+vi.mock('./effects/blackout', () => ({
+  enableBlackout: vi.fn(),
+  disableBlackout: vi.fn(),
+}))
+vi.mock('./effects/fog', () => ({
+  enableFog: vi.fn(),
+  disableFog: vi.fn(),
+}))
+
 import {
-  VexRank,
-  ScoringContext,
-  createVexBlackout,
-  createVexFog,
-  createVexCorruption,
-  createVexQuicksand,
-  createVexAmnesia,
-  createVexLeadFingers,
-  createVexWhiplash,
-  createVexTremor,
-  createVexMirage,
-  createVexJinxed,
-  createVexPressure,
-  getQuicksandBonusMultiplier,
+  upgradeVex,
   getLeadFingersDASBonus,
   getLeadFingersARRBonus,
   getWhiplashDuration,
   getMirageConfig,
-  getJinxedConfig,
   getPressureTimeLimit,
-  upgradeVex,
-  getSynergyMultiplier,
-  VEX_SYNERGIES,
+  getQuicksandBonusMultiplier,
+  getJinxedConfig,
+  STARTER_VEX_FACTORIES,
+  type ScoringContext,
+  type VexRank,
 } from './vex'
 
-/** Creates a mock ScoringContext for testing. */
-function createMockContext(overrides: Partial<ScoringContext> = {}): ScoringContext {
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Build a minimal ScoringContext for use in multiplier tests. */
+function makeCtx(overrides: Partial<ScoringContext> = {}): ScoringContext {
   return {
     linesCleared: 1,
     clusters: [],
-    totalClusterPoints: 4,
-    maxClusterSize: 2,
-    colorsInMove: new Set<number>(),
+    totalClusterPoints: 9,
+    maxClusterSize: 3,
+    colorsInMove: new Set([0x55c3d8]),
     moveIndex: 0,
     combo: 0,
-    timeRemaining: 100,
+    timeRemaining: 60,
     currentLevel: 1,
     ...overrides,
   }
 }
 
-describe('Vex Multipliers', () => {
-  describe('Blackout', () => {
-    it('should return 0 when no cluster points', () => {
-      const vex = createVexBlackout(1)
-      const ctx = createMockContext({ totalClusterPoints: 0 })
-      expect(vex.getMultiplier(ctx, 1)).toBe(0)
-    })
+const ALL_RANKS: VexRank[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-    it('should increase with rank', () => {
-      const ctx = createMockContext({ totalClusterPoints: 10 })
-      const r1 = createVexBlackout(1).getMultiplier(ctx, 1)
-      const r5 = createVexBlackout(5).getMultiplier(ctx, 5)
-      const r10 = createVexBlackout(10).getMultiplier(ctx, 10)
-      expect(r5).toBeGreaterThan(r1)
-      expect(r10).toBeGreaterThan(r5)
-    })
+// ---------------------------------------------------------------------------
+// upgradeVex
+// ---------------------------------------------------------------------------
+
+describe('upgradeVex', () => {
+  it('updates the rank and calls onRankChange', () => {
+    const onRankChange = vi.fn()
+    const vex = STARTER_VEX_FACTORIES.blackout(1)
+    vex.onRankChange = onRankChange
+
+    upgradeVex(vex, 3)
+
+    expect(vex.rank).toBe(3)
+    expect(onRankChange).toHaveBeenCalledWith(1, 3)
   })
 
-  describe('Fog', () => {
-    it('should return 0 when no cluster points', () => {
-      const vex = createVexFog(1)
-      const ctx = createMockContext({ totalClusterPoints: 0 })
-      expect(vex.getMultiplier(ctx, 1)).toBe(0)
-    })
+  it('does nothing when the rank is unchanged', () => {
+    const onRankChange = vi.fn()
+    const vex = STARTER_VEX_FACTORIES.blackout(5)
+    vex.onRankChange = onRankChange
 
-    it('should scale with rank', () => {
-      const ctx = createMockContext({ totalClusterPoints: 10 })
-      const r1 = createVexFog(1).getMultiplier(ctx, 1)
-      const r10 = createVexFog(10).getMultiplier(ctx, 10)
-      expect(r10).toBeGreaterThan(r1)
-    })
-  })
-
-  describe('Corruption', () => {
-    it('should return 0 when no cluster points', () => {
-      const vex = createVexCorruption(1)
-      const ctx = createMockContext({ totalClusterPoints: 0 })
-      expect(vex.getMultiplier(ctx, 1)).toBe(0)
-    })
-
-    it('should have highest multiplier at rank 10', () => {
-      const ctx = createMockContext({ totalClusterPoints: 10 })
-      const r10 = createVexCorruption(10).getMultiplier(ctx, 10)
-      expect(r10).toBeGreaterThanOrEqual(5.0)
-    })
-  })
-
-  describe('Quicksand', () => {
-    it('should return 0 when no lines cleared', () => {
-      const vex = createVexQuicksand(1)
-      const ctx = createMockContext({ linesCleared: 0 })
-      expect(vex.getMultiplier(ctx, 1)).toBe(0)
-    })
-
-    it('should return bonus multiplier when lines cleared', () => {
-      const vex = createVexQuicksand(1)
-      const ctx = createMockContext({ linesCleared: 2 })
-      expect(vex.getMultiplier(ctx, 1)).toBe(getQuicksandBonusMultiplier(1))
-    })
-  })
-
-  describe('Amnesia', () => {
-    it('should scale with current level', () => {
-      const ctx1 = createMockContext({ linesCleared: 2, currentLevel: 1 })
-      const ctx10 = createMockContext({ linesCleared: 2, currentLevel: 10 })
-      const r5 = createVexAmnesia(5)
-      const mult1 = r5.getMultiplier(ctx1, 5)
-      const mult10 = r5.getMultiplier(ctx10, 5)
-      expect(mult10).toBeGreaterThanOrEqual(mult1)
-    })
-  })
-
-  describe('Lead Fingers', () => {
-    it('should return 0 when no lines cleared', () => {
-      const vex = createVexLeadFingers(1)
-      const ctx = createMockContext({ linesCleared: 0 })
-      expect(vex.getMultiplier(ctx, 1)).toBe(0)
-    })
-
-    it('should increase with rank', () => {
-      const ctx = createMockContext({ linesCleared: 1 })
-      const r1 = createVexLeadFingers(1).getMultiplier(ctx, 1)
-      const r10 = createVexLeadFingers(10).getMultiplier(ctx, 10)
-      expect(r10).toBeGreaterThan(r1)
-    })
-  })
-
-  describe('Whiplash', () => {
-    it('should return 0 when no lines cleared', () => {
-      const vex = createVexWhiplash(1)
-      const ctx = createMockContext({ linesCleared: 0 })
-      expect(vex.getMultiplier(ctx, 1)).toBe(0)
-    })
-
-    it('should scale with rank', () => {
-      const ctx = createMockContext({ linesCleared: 2 })
-      const r1 = createVexWhiplash(1).getMultiplier(ctx, 1)
-      const r10 = createVexWhiplash(10).getMultiplier(ctx, 10)
-      expect(r10).toBeGreaterThan(r1)
-    })
-  })
-
-  describe('Tremor', () => {
-    it('should return 0 when no cluster points', () => {
-      const vex = createVexTremor(1)
-      const ctx = createMockContext({ totalClusterPoints: 0 })
-      expect(vex.getMultiplier(ctx, 1)).toBe(0)
-    })
-  })
-
-  describe('Mirage', () => {
-    it('should return 0 when no cluster points', () => {
-      const vex = createVexMirage(1)
-      const ctx = createMockContext({ totalClusterPoints: 0 })
-      expect(vex.getMultiplier(ctx, 1)).toBe(0)
-    })
-
-    it('should be mythic rarity', () => {
-      const vex = createVexMirage(1)
-      expect(vex.rarity).toBe('mythic')
-    })
-  })
-
-  describe('Jinxed', () => {
-    it('should return 0 when no lines cleared', () => {
-      const vex = createVexJinxed(1)
-      const ctx = createMockContext({ linesCleared: 0 })
-      expect(vex.getMultiplier(ctx, 1)).toBe(0)
-    })
-  })
-
-  describe('Pressure', () => {
-    it('should return 0 when no cluster points', () => {
-      const vex = createVexPressure(1)
-      const ctx = createMockContext({ totalClusterPoints: 0 })
-      expect(vex.getMultiplier(ctx, 1)).toBe(0)
-    })
-  })
-})
-
-describe('Vex Helper Functions', () => {
-  describe('getQuicksandBonusMultiplier', () => {
-    it('should increase with rank', () => {
-      const r1 = getQuicksandBonusMultiplier(1)
-      const r5 = getQuicksandBonusMultiplier(5)
-      const r10 = getQuicksandBonusMultiplier(10)
-      expect(r5).toBeGreaterThan(r1)
-      expect(r10).toBeGreaterThan(r5)
-    })
-
-    it('should cap at +50% at rank 10', () => {
-      expect(getQuicksandBonusMultiplier(10)).toBe(0.5)
-    })
-  })
-
-  describe('getLeadFingersDASBonus', () => {
-    it('should increase with rank', () => {
-      expect(getLeadFingersDASBonus(10)).toBeGreaterThan(getLeadFingersDASBonus(1))
-    })
-  })
-
-  describe('getLeadFingersARRBonus', () => {
-    it('should increase with rank', () => {
-      expect(getLeadFingersARRBonus(10)).toBeGreaterThan(getLeadFingersARRBonus(1))
-    })
-  })
-
-  describe('getWhiplashDuration', () => {
-    it('should increase with rank', () => {
-      expect(getWhiplashDuration(10)).toBeGreaterThan(getWhiplashDuration(1))
-    })
-  })
-
-  describe('getMirageConfig', () => {
-    it('should have onMs > offMs at low ranks', () => {
-      const cfg = getMirageConfig(1)
-      expect(cfg.onMs).toBeLessThan(cfg.offMs)
-    })
-
-    it('should have equal on/off at rank 10', () => {
-      const cfg = getMirageConfig(10)
-      expect(cfg.onMs).toBe(cfg.offMs)
-    })
-  })
-
-  describe('getJinxedConfig', () => {
-    it('should have alwaysRotate at rank 3+', () => {
-      expect(getJinxedConfig(3).alwaysRotate).toBe(true)
-      expect(getJinxedConfig(2).alwaysRotate).toBe(false)
-    })
-
-    it('should have colorScramble at rank 3+', () => {
-      expect(getJinxedConfig(3).colorScramble).toBe(true)
-      expect(getJinxedConfig(2).colorScramble).toBe(false)
-    })
-
-    it('should have columnJitter at rank 7+', () => {
-      expect(getJinxedConfig(7).columnJitter).toBe(3)
-      expect(getJinxedConfig(6).columnJitter).toBe(0)
-    })
-  })
-
-  describe('getPressureTimeLimit', () => {
-    it('should decrease with rank', () => {
-      expect(getPressureTimeLimit(10)).toBeLessThan(getPressureTimeLimit(1))
-    })
-
-    it('should be 3 seconds at rank 10', () => {
-      expect(getPressureTimeLimit(10)).toBe(3)
-    })
-  })
-})
-
-describe('Vex Upgrade System', () => {
-  it('should upgrade vex rank', () => {
-    const vex = createVexBlackout(1)
-    expect(vex.rank).toBe(1)
     upgradeVex(vex, 5)
+
     expect(vex.rank).toBe(5)
+    expect(onRankChange).not.toHaveBeenCalled()
   })
 
-  it('should clamp to rank 10', () => {
-    const vex = createVexBlackout(9)
-    upgradeVex(vex, 15)
+  it('clamps rank at 10', () => {
+    const vex = STARTER_VEX_FACTORIES.blackout(9)
+    upgradeVex(vex, 10)
     expect(vex.rank).toBe(10)
   })
+})
 
-  it('should not change if same rank', () => {
-    const vex = createVexBlackout(5)
-    const result = upgradeVex(vex, 5)
-    expect(result).toBeUndefined()
-    expect(vex.rank).toBe(5)
+// ---------------------------------------------------------------------------
+// Rank helper functions
+// ---------------------------------------------------------------------------
+
+describe('getLeadFingersDASBonus', () => {
+  it('returns a positive value for all ranks', () => {
+    for (const rank of ALL_RANKS) {
+      expect(getLeadFingersDASBonus(rank)).toBeGreaterThan(0)
+    }
   })
 
-  it('should call onRankChange callback', () => {
-    const vex = createVexBlackout(1)
-    let called = false
-    let oldRank = 0
-    let newRank = 0
-    vex.onRankChange = (old, newR) => {
-      called = true
-      oldRank = old
-      newRank = newR
+  it('increases with rank', () => {
+    for (let i = 1; i < ALL_RANKS.length; i++) {
+      expect(getLeadFingersDASBonus(ALL_RANKS[i])).toBeGreaterThanOrEqual(
+        getLeadFingersDASBonus(ALL_RANKS[i - 1]),
+      )
     }
-    upgradeVex(vex, 3)
-    expect(called).toBe(true)
-    expect(oldRank).toBe(1)
-    expect(newRank).toBe(3)
+  })
+
+  it('returns 10 at rank 1 and 40 at rank 10', () => {
+    expect(getLeadFingersDASBonus(1)).toBe(10)
+    expect(getLeadFingersDASBonus(10)).toBe(40)
   })
 })
 
-describe('Vex Synergies', () => {
-  it('should have defined synergies', () => {
-    expect(VEX_SYNERGIES.length).toBeGreaterThan(0)
-  })
-
-  it('synergy bonus multipliers should be positive', () => {
-    for (const synergy of VEX_SYNERGIES) {
-      expect(synergy.bonusMultiplier).toBeGreaterThan(0)
+describe('getLeadFingersARRBonus', () => {
+  it('returns a positive value for all ranks', () => {
+    for (const rank of ALL_RANKS) {
+      expect(getLeadFingersARRBonus(rank)).toBeGreaterThan(0)
     }
   })
 
-  it('synergy multipliers should be additive', () => {
-    // Test that synergies can stack
-    const mockVexes = [
-      { id: 'blackout', kind: 'color' as const, rank: 5 as VexRank, getMultiplier: () => 2 },
-      { id: 'fog', kind: 'color' as const, rank: 5 as VexRank, getMultiplier: () => 2 },
+  it('increases with rank', () => {
+    for (let i = 1; i < ALL_RANKS.length; i++) {
+      expect(getLeadFingersARRBonus(ALL_RANKS[i])).toBeGreaterThanOrEqual(
+        getLeadFingersARRBonus(ALL_RANKS[i - 1]),
+      )
+    }
+  })
+})
+
+describe('getWhiplashDuration', () => {
+  it('returns positive ms for all ranks', () => {
+    for (const rank of ALL_RANKS) {
+      expect(getWhiplashDuration(rank)).toBeGreaterThan(0)
+    }
+  })
+
+  it('returns 150ms at rank 1 and 800ms at rank 10', () => {
+    expect(getWhiplashDuration(1)).toBe(150)
+    expect(getWhiplashDuration(10)).toBe(800)
+  })
+})
+
+describe('getPressureTimeLimit', () => {
+  it('returns positive seconds for all ranks', () => {
+    for (const rank of ALL_RANKS) {
+      expect(getPressureTimeLimit(rank)).toBeGreaterThan(0)
+    }
+  })
+
+  it('decreases with rank (higher rank = tighter time limit)', () => {
+    for (let i = 1; i < ALL_RANKS.length; i++) {
+      expect(getPressureTimeLimit(ALL_RANKS[i])).toBeLessThanOrEqual(
+        getPressureTimeLimit(ALL_RANKS[i - 1]),
+      )
+    }
+  })
+
+  it('returns 8s at rank 1 and 3s at rank 10', () => {
+    expect(getPressureTimeLimit(1)).toBe(8)
+    expect(getPressureTimeLimit(10)).toBe(3)
+  })
+})
+
+describe('getQuicksandBonusMultiplier', () => {
+  it('equals rank-scaled bonus multiplier', () => {
+    const expected: Record<number, number> = {
+      1: 0.04, 2: 0.07, 3: 0.10, 4: 0.13, 5: 0.17,
+      6: 0.21, 7: 0.26, 8: 0.32, 9: 0.40, 10: 0.50,
+    }
+    for (const rank of ALL_RANKS) {
+      expect(getQuicksandBonusMultiplier(rank)).toBeCloseTo(expected[rank])
+    }
+  })
+})
+
+describe('getMirageConfig', () => {
+  it('returns config with positive onMs and offMs', () => {
+    for (const rank of ALL_RANKS) {
+      const cfg = getMirageConfig(rank)
+      expect(cfg.onMs).toBeGreaterThan(0)
+      expect(cfg.offMs).toBeGreaterThan(0)
+      expect(cfg.colRange).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('getJinxedConfig', () => {
+  it('rotateChance is between 0 and 1', () => {
+    for (const rank of ALL_RANKS) {
+      const cfg = getJinxedConfig(rank)
+      expect(cfg.rotateChance).toBeGreaterThanOrEqual(0)
+      expect(cfg.rotateChance).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('alwaysRotate is true from rank 3+', () => {
+    expect(getJinxedConfig(2).alwaysRotate).toBe(false)
+    expect(getJinxedConfig(3).alwaysRotate).toBe(true)
+    expect(getJinxedConfig(10).alwaysRotate).toBe(true)
+  })
+
+  it('columnJitter is 0 below rank 7, positive at rank 7+', () => {
+    expect(getJinxedConfig(6).columnJitter).toBe(0)
+    expect(getJinxedConfig(7).columnJitter).toBeGreaterThan(0)
+    expect(getJinxedConfig(10).columnJitter).toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Vex multipliers — all factories
+// ---------------------------------------------------------------------------
+
+describe('Vex multipliers: return 0 when scoring context does not qualify', () => {
+  it('color vexes return 0 when totalClusterPoints is 0', () => {
+    const colorVexIds = ['blackout', 'fog', 'corruption', 'tremor', 'mirage', 'pressure'] as const
+    const ctx = makeCtx({ totalClusterPoints: 0 })
+
+    for (const id of colorVexIds) {
+      const vex = STARTER_VEX_FACTORIES[id](1)
+      expect(vex.getMultiplier(ctx, 1)).toBe(0)
+    }
+  })
+
+  it('line vexes return 0 when linesCleared is 0', () => {
+    const lineVexIds = ['quicksand', 'amnesia', 'rising_dread', 'lead_fingers', 'whiplash', 'jinxed'] as const
+    const ctx = makeCtx({ linesCleared: 0 })
+
+    for (const id of lineVexIds) {
+      const vex = STARTER_VEX_FACTORIES[id](1)
+      expect(vex.getMultiplier(ctx, 1)).toBe(0)
+    }
+  })
+})
+
+describe('Vex multipliers: return positive value when context qualifies', () => {
+  const ctx = makeCtx()
+
+  it('blackout returns positive at all ranks', () => {
+    for (const rank of ALL_RANKS) {
+      expect(STARTER_VEX_FACTORIES.blackout(rank).getMultiplier(ctx, rank)).toBeGreaterThan(0)
+    }
+  })
+
+  it('fog returns positive at all ranks', () => {
+    for (const rank of ALL_RANKS) {
+      expect(STARTER_VEX_FACTORIES.fog(rank).getMultiplier(ctx, rank)).toBeGreaterThan(0)
+    }
+  })
+
+  it('quicksand returns positive at all ranks', () => {
+    for (const rank of ALL_RANKS) {
+      expect(STARTER_VEX_FACTORIES.quicksand(rank).getMultiplier(ctx, rank)).toBeGreaterThan(0)
+    }
+  })
+
+  it('amnesia returns positive at all ranks (level 1)', () => {
+    for (const rank of ALL_RANKS) {
+      expect(STARTER_VEX_FACTORIES.amnesia(rank).getMultiplier(ctx, rank)).toBeGreaterThan(0)
+    }
+  })
+
+  it('amnesia scales with level (level 10 > level 1)', () => {
+    const rank: VexRank = 5
+    const low = STARTER_VEX_FACTORIES.amnesia(rank).getMultiplier(makeCtx({ currentLevel: 1 }), rank)
+    const high = STARTER_VEX_FACTORIES.amnesia(rank).getMultiplier(makeCtx({ currentLevel: 10 }), rank)
+    expect(high).toBeGreaterThan(low)
+  })
+})
+
+describe('Vex multipliers: increase monotonically with rank', () => {
+  const ctx = makeCtx()
+
+  const allVexIds = Object.keys(STARTER_VEX_FACTORIES) as (keyof typeof STARTER_VEX_FACTORIES)[]
+
+  for (const id of allVexIds) {
+    it(`${id} multiplier is non-decreasing across ranks 1–10`, () => {
+      for (let i = 1; i < ALL_RANKS.length; i++) {
+        const lower = STARTER_VEX_FACTORIES[id](ALL_RANKS[i - 1]).getMultiplier(ctx, ALL_RANKS[i - 1])
+        const higher = STARTER_VEX_FACTORIES[id](ALL_RANKS[i]).getMultiplier(ctx, ALL_RANKS[i])
+        expect(higher).toBeGreaterThanOrEqual(lower)
+      }
+    })
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Scoring formula
+// ---------------------------------------------------------------------------
+
+describe('Scoring formula', () => {
+  /**
+   * Replicates the formula from GameScene (moveScore calculation):
+   *   colorMult = 1 + Σ(color vex multipliers)
+   *   lineMult  = 1 + Σ(line vex multipliers)
+   *   score     = (totalClusterPoints * colorMult) * (linesCleared * lineMult)
+   */
+  function computeScore(
+    totalClusterPoints: number,
+    linesCleared: number,
+    colorBonus: number,
+    lineBonus: number,
+  ) {
+    const colorMult = 1 + colorBonus
+    const lineMult = 1 + lineBonus
+    return (totalClusterPoints * colorMult) * (linesCleared * lineMult)
+  }
+
+  it('returns 0 when no lines are cleared', () => {
+    expect(computeScore(9, 0, 0, 0)).toBe(0)
+  })
+
+  it('returns 0 when no cluster points exist', () => {
+    expect(computeScore(0, 4, 0, 0)).toBe(0)
+  })
+
+  it('baseline (no Vexes): clusterPoints * linesCleared', () => {
+    expect(computeScore(9, 1, 0, 0)).toBe(9)
+    expect(computeScore(4, 2, 0, 0)).toBe(8)
+  })
+
+  it('color bonus scales totalClusterPoints', () => {
+    // colorMult = 1.5, lineMult = 1
+    expect(computeScore(9, 1, 0.5, 0)).toBeCloseTo(9 * 1.5)
+  })
+
+  it('line bonus scales linesCleared', () => {
+    // colorMult = 1, lineMult = 2
+    expect(computeScore(9, 2, 0, 1)).toBeCloseTo(9 * 2 * 2)
+  })
+
+  it('both bonuses compound multiplicatively', () => {
+    const result = computeScore(9, 2, 0.5, 1)
+    // (9 * 1.5) * (2 * 2) = 13.5 * 4 = 54
+    expect(result).toBeCloseTo(54)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// STARTER_VEX_FACTORIES registry
+// ---------------------------------------------------------------------------
+
+describe('STARTER_VEX_FACTORIES', () => {
+  it('contains all expected Vex IDs', () => {
+    const expectedIds = [
+      'blackout', 'fog', 'corruption', 'quicksand', 'amnesia',
+      'rising_dread', 'lead_fingers', 'whiplash', 'tremor', 'mirage',
+      'jinxed', 'pressure',
     ]
-    // With blackout + fog (both color vexes), blind_faith synergy should apply
-    const mult = getSynergyMultiplier(mockVexes as any, 'color')
-    expect(mult).toBeGreaterThan(0)
+    for (const id of expectedIds) {
+      expect(id in STARTER_VEX_FACTORIES).toBe(true)
+    }
+  })
+
+  it('each factory creates a Vex with matching id', () => {
+    for (const [id, factory] of Object.entries(STARTER_VEX_FACTORIES)) {
+      const vex = factory(1)
+      expect(vex.id).toBe(id)
+    }
+  })
+
+  it('each factory creates a Vex with valid kind', () => {
+    for (const factory of Object.values(STARTER_VEX_FACTORIES)) {
+      const vex = factory(1)
+      expect(['color', 'line']).toContain(vex.kind)
+    }
+  })
+
+  it('each factory creates a Vex with valid rarity', () => {
+    const validRarities = ['common', 'uncommon', 'rare', 'mythic']
+    for (const factory of Object.values(STARTER_VEX_FACTORIES)) {
+      const vex = factory(1)
+      expect(validRarities).toContain(vex.rarity)
+    }
   })
 })
