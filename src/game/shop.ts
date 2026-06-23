@@ -273,7 +273,6 @@ export function showVexShop(
   resolveMax: number,
   onPick: (result: ShopResult) => void,
 ): void {
-  injectCSS()
   audioManager.playSfx('shopOpen')
 
   const offers = buildOffers(activeVexes, completedLevel)

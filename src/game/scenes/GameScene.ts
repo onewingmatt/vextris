@@ -18,8 +18,6 @@ import {
   BLOCK_COLORS,
   LevelParams,
   getLevelParams,
-  SRS_WALL_KICKS,
-  SRS_REVERSE_WALL_KICKS,
 } from '../config'
 import {
   Vex,
@@ -1110,6 +1108,7 @@ export class GameScene extends Phaser.Scene {
       shape: data.shape.map(row => [...row]),
       colors: data.shape.map(row => row.map(block => block ? Phaser.Utils.Array.GetRandom(BLOCK_COLORS) : 0)),
       position: { x: 11, y: 2 },
+      rotationState: 0,
     }
   }
 
@@ -1296,7 +1295,8 @@ export class GameScene extends Phaser.Scene {
       type: holdData.type,
       shape: holdData.shape.map(row => [...row]),
       colors: holdData.shape.map(row => row.map(block => block ? Phaser.Utils.Array.GetRandom(BLOCK_COLORS) : 0)),
-      position: { x: 0, y: 0 }
+      position: { x: 0, y: 0 },
+      rotationState: 0,
     };
 
     if (currentHeldType) {
@@ -1306,7 +1306,8 @@ export class GameScene extends Phaser.Scene {
         type: data.type,
         shape: data.shape.map(row => [...row]),
         colors: data.shape.map(row => row.map(block => block ? Phaser.Utils.Array.GetRandom(BLOCK_COLORS) : 0)),
-        position: { x: Math.floor(BOARD_WIDTH / 2) - Math.floor(data.shape[0].length / 2), y: 0 }
+        position: { x: Math.floor(BOARD_WIDTH / 2) - Math.floor(data.shape[0].length / 2), y: 0 },
+        rotationState: 0,
       };
     } else {
       // Run normal spawn logic
