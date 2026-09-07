@@ -1,5 +1,5 @@
 /**
- * effects/blackout.ts — Vex of Blackout visual curse.
+ * effects/blackout.ts — Vex of Blackout visual curse. (guarded edition)
  *
  * Creates and manages a single <div id="blackout-overlay"> inside the game
  * container (#game). The overlay fades in and out on a rank-dependent cycle
@@ -14,6 +14,16 @@
  *
  * Timer strategy: plain window.setTimeout (not Phaser timers) so the effect
  * runs even while the game loop is paused (e.g. during the shop).
+ *
+ * GAMEPLAY GUARD (2026-09 audit fix): runCycle now checks the game state.
+ * Before, cycles fired during the shop / pause / GAMEOVER: the warning flash
+ * was wasted on the overlay (invisible, z 500 < shop's 1000), and the player
+ * resumed mid-hold into full darkness with zero notice. Cycles during
+ * GAMEOVER churned forever. Now a cycle that would start while not PLAYING
+ * reschedules itself after a short probe delay, so timing continues (no burst
+ * on resume) but no flash/hold ever lands outside gameplay. When the next
+ * cycle fires during PLAYING, the player gets the full warning flash → dark
+ * sequence, as designed.
  */
 
 import { audioManager } from '../audio'
@@ -145,6 +155,32 @@ function setFlashState(overlay: HTMLElement): void {
 }
 
 // ---------------------------------------------------------------------------
+// Gameplay guard
+// ---------------------------------------------------------------------------
+
+/**
+ * Gameplay-state probe. Mirrors tremor.ts's isGameplayActive() pattern.
+ * The scene registers a state accessor at create(); before registration (or
+ * in tests), we default to "active" so the effect still runs standalone.
+ */
+type BlackoutSceneState = { isGameplayActive: () => boolean }
+let sceneStateProbe: BlackoutSceneState | null = null
+
+/** Called by GameScene at create() so the guard can read the true state. */
+export function registerBlackoutScene(state: { isGameplayActive: () => boolean }): void {
+    sceneStateProbe = state
+}
+
+/** Called by GameScene on shutdown/destroy to clear the probe. */
+export function unregisterBlackoutScene(): void {
+    sceneStateProbe = null
+}
+
+function isGameplayActive(): boolean {
+    return sceneStateProbe?.isGameplayActive() ?? true
+}
+
+// ---------------------------------------------------------------------------
 // Core cycle
 // ---------------------------------------------------------------------------
 
@@ -155,8 +191,22 @@ function setFlashState(overlay: HTMLElement): void {
  *   3. Hold for holdMs.
  *   4. Fade the overlay OUT (to 0) over fadeMs.
  *   5. Schedule the next cycle after intervalMs.
+ *
+ * GUARD: if gameplay is not active when the cycle is due, skip the flash/hold
+ * entirely and re-probe after a short delay. This keeps the cycle clock
+ * running (no burst when play resumes) while guaranteeing no visual/audio
+ * event ever fires over the shop, pause menu, or game-over screen — and the
+ * player always sees the full warning-flash sequence before any darkness.
  */
 function runCycle(rank: BlackoutRank, cfg: BlackoutConfig): void {
+    if (!isGameplayActive()) {
+        cycleTimer = setTimeout(() => {
+            cycleTimer = null
+            runCycle(rank, cfg)
+        }, 750)
+        return
+    }
+
     const overlay = getOrCreateOverlay()
 
     // ── Step 1: Brief pre-blackout flash ────────────────────────────
@@ -187,6 +237,7 @@ function runCycle(rank: BlackoutRank, cfg: BlackoutConfig): void {
                 }, cfg.fadeMs)
             }, cfg.fadeMs + cfg.holdMs)
         }, cfg.flashGapMs)
+
     }, cfg.flashMs)
 }
 

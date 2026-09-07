@@ -39,7 +39,7 @@ import {
   computeFrameDelta,
   framesToMs,
 } from '../frameTiming'
-import { disableBlackout } from '../effects/blackout'
+import { disableBlackout, registerBlackoutScene, unregisterBlackoutScene } from '../effects/blackout'
 import { setFogHeight, disableFog } from '../effects/fog'
 import { enableTremor, disableTremor } from '../effects/tremor'
 import { enableWhiplash, disableWhiplash, triggerWhiplash } from '../effects/whiplash'
@@ -217,6 +217,7 @@ export class GameScene extends Phaser.Scene {
 
   private cleanupSceneRuntime(): void {
     this.clearAllVexTimers()
+    unregisterBlackoutScene()
     disableBlackout()
     disableFog()
     disableTremor()
@@ -795,6 +796,11 @@ export class GameScene extends Phaser.Scene {
       audioManager.startBgm(GameScene.BGM_URL)
     })
     ensureSoundControls()
+    // Register the scene with cycle-effect guards so blackout never fires
+    // its flash/hold over the shop, pause menu, or game-over screen.
+    registerBlackoutScene({
+      isGameplayActive: () => this.gameState === 'PLAYING',
+    })
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanupSceneRuntime())
     this.events.once(Phaser.Scenes.Events.DESTROY, () => this.cleanupSceneRuntime())
 
