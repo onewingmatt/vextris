@@ -30,6 +30,7 @@ import {
   getPressureTimeLimit,
 } from '../vex'
 import { buildScoringContext, scoreMove } from '../scoring'
+import { createRng, createSessionRng, type Rng } from '../rng'
 import { showVexShop } from '../shop'
 import { DevPanel } from '../devPanel'
 import { updateVexBar } from '../vexBar'
@@ -100,6 +101,9 @@ export class GameScene extends Phaser.Scene {
   private level = INITIAL_LEVEL  // gravity level (separate from progression level)
   private lines = 0
   private gravityTimer = 0;
+  /** Seeded RNG for all GAMEPLAY randomness (piece streams, jinxed, corruption, garbage).
+   *  Same seed + same inputs = same game. Cosmetic randomness (particles) stays Math.random. */
+  private rng: Rng = createSessionRng();
   private gravityDelay = GRAVITY_TABLE[0];
   private clearingLines: number[] = [];
   private scoringClusters: { blocks: { x: number, y: number }[], color: number }[] = []
@@ -499,12 +503,12 @@ export class GameScene extends Phaser.Scene {
     if (rank <= 0) return
 
     const cfg = getJinxedConfig(rank as VexRank)
-    const shouldRotate = cfg.alwaysRotate || Math.random() < cfg.rotateChance
+    const shouldRotate = cfg.alwaysRotate || this.rng.chance(cfg.rotateChance)
 
     if (shouldRotate) {
       let nextShape = this.currentPiece.shape
       let nextColors = this.currentPiece.colors
-      const rotationCount = 1 + Math.floor(Math.random() * 3)
+      const rotationCount = 1 + this.rng.int(3)
 
       for (let step = 0; step < rotationCount; step++) {
         const rotated = this.rotatePieceDataClockwise(nextShape, nextColors)
@@ -519,7 +523,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (cfg.colorScramble) {
-      const randomColor = Phaser.Utils.Array.GetRandom(BLOCK_COLORS)
+      const randomColor = this.rng.pick(BLOCK_COLORS)
       this.currentPiece.colors = this.currentPiece.shape.map((row) =>
         row.map((block) => (block ? randomColor : 0))
       )
@@ -561,7 +565,7 @@ export class GameScene extends Phaser.Scene {
           this.mirageActive = true
           let colOffset = Phaser.Math.Between(-cfg.colRange, cfg.colRange)
           if (colOffset === 0) {
-            colOffset = Math.random() < 0.5 ? -1 : 1
+            colOffset = this.rng.chance(0.5) ? -1 : 1
           }
           this.mirageColOffset = colOffset
           audioManager.playSfx('mirage', { rank })
@@ -719,13 +723,13 @@ export class GameScene extends Phaser.Scene {
 
     const changes = Math.min(cellsPerTick, targetPool.length)
     for (let index = 0; index < changes; index++) {
-      const pick = Math.floor(Math.random() * targetPool.length)
+      const pick = this.rng.int(targetPool.length)
       const { x, y } = targetPool.splice(pick, 1)[0]
       const current = this.board[y][x].color
 
       let nextColor = current
       for (let attempt = 0; attempt < 6 && nextColor === current; attempt++) {
-        nextColor = BLOCK_COLORS[Math.floor(Math.random() * BLOCK_COLORS.length)]
+        nextColor = this.rng.pick(BLOCK_COLORS)
       }
       this.board[y][x].color = nextColor
     }
@@ -1111,11 +1115,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private generateNextPiece() {
-    const data = Phaser.Utils.Array.GetRandom(PIECES)
+    const data = this.rng.pick(PIECES)
     this.nextPiece = {
       type: data.type,
       shape: data.shape.map(row => [...row]),
-      colors: data.shape.map(row => row.map(block => block ? Phaser.Utils.Array.GetRandom(BLOCK_COLORS) : 0)),
+      colors: data.shape.map(row => row.map(block => block ? this.rng.pick(BLOCK_COLORS) : 0)),
       position: { x: 11, y: 2 },
       rotationState: 0,
     }
@@ -1306,7 +1310,7 @@ export class GameScene extends Phaser.Scene {
     const newHeldPiece: Piece = {
       type: holdData.type,
       shape: holdData.shape.map(row => [...row]),
-      colors: holdData.shape.map(row => row.map(block => block ? Phaser.Utils.Array.GetRandom(BLOCK_COLORS) : 0)),
+      colors: holdData.shape.map(row => row.map(block => block ? this.rng.pick(BLOCK_COLORS) : 0)),
       position: { x: 0, y: 0 },
       rotationState: 0,
     };
@@ -1317,7 +1321,7 @@ export class GameScene extends Phaser.Scene {
       this.currentPiece = {
         type: data.type,
         shape: data.shape.map(row => [...row]),
-        colors: data.shape.map(row => row.map(block => block ? Phaser.Utils.Array.GetRandom(BLOCK_COLORS) : 0)),
+        colors: data.shape.map(row => row.map(block => block ? this.rng.pick(BLOCK_COLORS) : 0)),
         position: { x: Math.floor(BOARD_WIDTH / 2) - Math.floor(data.shape[0].length / 2), y: 0 },
         rotationState: 0,
       };
@@ -2563,7 +2567,7 @@ export class GameScene extends Phaser.Scene {
     // Choose random gap positions (distinct indices)
     const gapPositions = new Set<number>();
     while (gapPositions.size < gapsPerRow) {
-      gapPositions.add(Math.floor(Math.random() * BOARD_WIDTH));
+      gapPositions.add(this.rng.int(BOARD_WIDTH));
     }
 
     // Fill bottom row
@@ -2572,7 +2576,7 @@ export class GameScene extends Phaser.Scene {
       if (gapPositions.has(x)) {
         this.board[bottomRow][x] = { filled: false, color: COLORS.empty };
       } else {
-        const randomColor = garbageColors[Math.floor(Math.random() * garbageColors.length)];
+        const randomColor = this.rng.pick(garbageColors);
         this.board[bottomRow][x] = { filled: true, color: randomColor };
       }
     }
@@ -2790,6 +2794,12 @@ export class GameScene extends Phaser.Scene {
    * rather than being hard-coded here.
    */
   private initRun(): void {
+    // Fresh gameplay RNG per run. Seed is logged so any run can be replayed
+    // from the console (and later: a ?seed= URL param for bug reports).
+    const seed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0
+    this.rng = createRng(seed)
+    console.info(`[vextris] run seed: ${seed}`)
+
     disableBlackout()
     disableFog()
     disableTremor()
