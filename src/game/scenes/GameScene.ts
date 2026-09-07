@@ -34,6 +34,11 @@ import {
 import { showVexShop } from '../shop'
 import { DevPanel } from '../devPanel'
 import { updateVexBar } from '../vexBar'
+import {
+  FRAME_TIME_MS,
+  computeFrameDelta,
+  framesToMs,
+} from '../frameTiming'
 import { disableBlackout } from '../effects/blackout'
 import { setFogHeight, disableFog } from '../effects/fog'
 import { enableTremor, disableTremor } from '../effects/tremor'
@@ -169,8 +174,7 @@ export class GameScene extends Phaser.Scene {
   // Removed in favor of simplicity; recalculates every frame
 
   // FPS cap tuning
-  private readonly TARGET_FPS = 60
-  private readonly FRAME_TIME_MS = 1000 / this.TARGET_FPS
+  private readonly FRAME_TIME_MS = FRAME_TIME_MS
   private lastUpdateTime = 0
 
   /** Dev panel (dev builds only) — backtick to open/close */
@@ -1089,7 +1093,7 @@ export class GameScene extends Phaser.Scene {
     this.clearLines();
     if (this.clearingLines.length > 0) {
       // If we found missed lines, trigger the clear sequence and wait
-      this.clearTimer = 5;
+      this.clearTimer = framesToMs(5);
       this.pressureCountdown = null
       return;
     }
@@ -1131,20 +1135,22 @@ export class GameScene extends Phaser.Scene {
     return 0.4 + 0.6 * ((level - 1) / 9)
   }
 
-  private handleInput(delta: number, time: number) {
+  private handleInput(frameDelta: number, time: number) {
     const leadFingersRank = this.getActiveVexRank('lead_fingers')
     const punctureScale = this.getLeadFingersPenaltyScale()
     const dasBonus = leadFingersRank > 0 ? getLeadFingersDASBonus(leadFingersRank as VexRank) * punctureScale : 0
     const arrBonus = leadFingersRank > 0 ? getLeadFingersARRBonus(leadFingersRank as VexRank) * punctureScale : 0
-    const dasThresholdMs = (DAS_DELAY + dasBonus) * 16.67
-    const arrThresholdMs = (ARR_DELAY + arrBonus) * 16.67
+    // DAS/ARR are frame-count constants (60fps nominal) converted to wall ms.
+    const dasThresholdMs = framesToMs(DAS_DELAY + dasBonus)
+    const arrThresholdMs = framesToMs(ARR_DELAY + arrBonus)
 
     // Left movement with DAS
     if (Phaser.Input.Keyboard.JustDown(this.leftKey)) {
       this.movePiece(-1, 0)
       this.leftDownTime = 0
+      this.lastLeftMove = time
     } else if (this.leftKey.isDown) {
-      this.leftDownTime += delta
+      this.leftDownTime += frameDelta
       if (this.leftDownTime >= dasThresholdMs && (time - this.lastLeftMove) >= arrThresholdMs) {
         this.movePiece(-1, 0)
         this.lastLeftMove = time
@@ -1157,8 +1163,9 @@ export class GameScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.rightKey)) {
       this.movePiece(1, 0)
       this.rightDownTime = 0
+      this.lastRightMove = time
     } else if (this.rightKey.isDown) {
-      this.rightDownTime += delta
+      this.rightDownTime += frameDelta
       if (this.rightDownTime >= dasThresholdMs && (time - this.lastRightMove) >= arrThresholdMs) {
         this.movePiece(1, 0)
         this.lastRightMove = time
@@ -1377,7 +1384,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     if (this.clearingLines.length > 0) {
-      this.clearTimer = 5;
+      this.clearTimer = framesToMs(5);
 
       // Calculate clusters for visual feedback
       const blocksToScore: { x: number, y: number, color: number }[] = [];
@@ -1611,7 +1618,7 @@ export class GameScene extends Phaser.Scene {
   private renderThematicLineClearOverlay(boardOffsetX: number, boardOffsetY: number): void {
     if (this.clearTimer <= 0 || this.clearingLines.length === 0) return
 
-    const timerMax = 5
+    const timerMax = framesToMs(5)
     const progress = 1 - Math.max(0, Math.min(1, this.clearTimer / timerMax))
     const pulse = 0.45 + 0.55 * Math.sin(progress * Math.PI)
     const linesCleared = this.clearingLines.length
@@ -1858,22 +1865,26 @@ export class GameScene extends Phaser.Scene {
     this.renderFloatingTexts();
   }
 
-  update(time: number, delta: number) {
+  update(time: number, _delta: number) {
     if (Phaser.Input.Keyboard.JustDown(this.pKey) || Phaser.Input.Keyboard.JustDown(this.escKey)) {
       this.togglePause();
     }
 
     if (this.gameState !== 'PLAYING') return;
 
-    // FPS cap: throttle game updates to TARGET_FPS
+    // FPS cap: throttle game updates to TARGET_FPS (resolution-independent).
+    // frameDelta covers the true wall-clock gap between processed frames, so
+    // all game-time accumulators advance at real speed on 60/120/144Hz alike.
+    // computeFrameDelta clamps the gap (tab-background, pause-resume spikes).
     if (this.lastUpdateTime !== 0 && time - this.lastUpdateTime < this.FRAME_TIME_MS) {
       return
     }
+    const frameDelta = computeFrameDelta(this.lastUpdateTime, time)
     this.lastUpdateTime = time
 
-    // Line clear animation delay
+    // Line clear animation delay (ms-based; 5 logical frames at 60fps)
     if (this.clearTimer > 0) {
-      this.clearTimer--;
+      this.clearTimer = Math.max(0, this.clearTimer - frameDelta);
       if (this.clearTimer === 0) {
         // --- Scoring: Color Clusters + Vex multipliers ---
         // We MUST score BEFORE clearing the board rows.
@@ -2119,7 +2130,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Input handling
-    this.handleInput(delta, time);
+    this.handleInput(frameDelta, time);
 
     const pressureRank = this.getActiveVexRank('pressure')
     if (pressureRank > 0 && this.currentPiece) {
@@ -2127,7 +2138,7 @@ export class GameScene extends Phaser.Scene {
         this.resetPressureCountdownForCurrentPiece()
       }
       if (this.pressureCountdown !== null) {
-        this.pressureCountdown = Math.max(0, this.pressureCountdown - delta / 1000)
+        this.pressureCountdown = Math.max(0, this.pressureCountdown - frameDelta / 1000)
         if (this.pressureCountdown <= 0) {
           this.hardDrop(false)
           return
@@ -2139,7 +2150,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // --- Resolve Drain: Hybrid system ---
-    this.applyResolveDelta(-(delta * this.getRealtimeResolveDrainPerSecond() / 1000))
+    this.applyResolveDelta(-(frameDelta * this.getRealtimeResolveDrainPerSecond() / 1000))
 
     // Win condition: reached target score before Resolve ran out
     if (this.currentLevelScore >= this.currentLevelParams.targetScore) {
@@ -2158,9 +2169,10 @@ export class GameScene extends Phaser.Scene {
     const quicksandRank = this.getActiveVexRank('quicksand')
     const quicksandScale = this.getQuicksandGravityScale(quicksandRank)
     const currentDelay = isSoftDrop ? 1 : Math.max(1, this.gravityDelay * quicksandScale);
-    this.gravityTimer += delta;
+    this.gravityTimer += frameDelta;
 
-    if (this.gravityTimer >= currentDelay * 16.67) {
+    while (this.gravityTimer >= currentDelay * FRAME_TIME_MS) {
+      this.gravityTimer -= currentDelay * FRAME_TIME_MS;
       const moved = this.movePiece(0, 1);
       if (!moved) {
         // GB Lock: piece locks immediately if it cannot move down when gravity hits
@@ -2194,7 +2206,6 @@ export class GameScene extends Phaser.Scene {
           }
         }
       }
-      this.gravityTimer = 0;
     }
 
     // Spawn new piece
@@ -2212,13 +2223,14 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Update particles (reuse pool - only iterate active)
+    const particleStep = frameDelta / FRAME_TIME_MS
     for (let i = 0; i < this.particlePool.length; i++) {
       const p = this.particlePool[i];
       if (p.active) {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.1; // gravity
-        p.life -= 0.02;
+        p.x += p.vx * particleStep;
+        p.y += p.vy * particleStep;
+        p.vy += 0.1 * particleStep; // gravity
+        p.life -= 0.02 * particleStep;
         if (p.life <= 0) p.active = false;
       }
     }
@@ -2227,8 +2239,8 @@ export class GameScene extends Phaser.Scene {
     for (let i = 0; i < this.floatingTextPool.length; i++) {
       const ft = this.floatingTextPool[i];
       if (ft.active) {
-        ft.y -= 0.3; // float up
-        ft.life -= 0.015;
+        ft.y -= 0.3 * particleStep; // float up
+        ft.life -= 0.015 * particleStep;
         if (ft.life <= 0) ft.active = false;
       }
     }
@@ -2298,7 +2310,7 @@ export class GameScene extends Phaser.Scene {
         this.fogHeightPx = targetFogHeight
       } else {
         const retreatSpeed = this.fogRank >= 9 ? 10 : this.fogRank >= 7 ? 16 : 26
-        const retreatStep = (retreatSpeed * delta) / 1000
+        const retreatStep = (retreatSpeed * frameDelta) / 1000
         this.fogHeightPx = Math.max(targetFogHeight, this.fogHeightPx - retreatStep)
       }
       setFogHeight(this.fogHeightPx)
