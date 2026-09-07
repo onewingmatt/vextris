@@ -21,7 +21,6 @@ import {
 } from '../config'
 import {
   Vex,
-  ScoringContext,
   VexRank,
   getLeadFingersDASBonus,
   getLeadFingersARRBonus,
@@ -29,8 +28,8 @@ import {
   getMirageConfig,
   getJinxedConfig,
   getPressureTimeLimit,
-  getSynergyMultiplier,
 } from '../vex'
+import { buildScoringContext, scoreMove } from '../scoring'
 import { showVexShop } from '../shop'
 import { DevPanel } from '../devPanel'
 import { updateVexBar } from '../vexBar'
@@ -1892,7 +1891,7 @@ export class GameScene extends Phaser.Scene {
     if (this.clearTimer > 0) {
       this.clearTimer = Math.max(0, this.clearTimer - frameDelta);
       if (this.clearTimer === 0) {
-        // --- Scoring: Color Clusters + Vex multipliers ---
+        // --- Scoring: Color Clusters + Vex multipliers (pure pipeline in scoring.ts) ---
         // We MUST score BEFORE clearing the board rows.
         const linesCleared = this.clearingLines.length;
         this.lines += linesCleared;
@@ -1902,53 +1901,20 @@ export class GameScene extends Phaser.Scene {
           this.floatingTextPool[i].active = false;
         }
 
-        // Step 1: base cluster points (unchanged formula)
-        let totalClusterPoints = 0;
-        let maxClusterSize = 0;
-        const colorsInMove = new Set<number>()
-        for (const cluster of this.scoringClusters) {
-          const clusterSize = cluster.blocks.length
-          totalClusterPoints += clusterSize * clusterSize;
-          if (clusterSize > maxClusterSize) maxClusterSize = clusterSize
-          colorsInMove.add(cluster.color)
-        }
-
-        // Step 2: build ScoringContext so Vexes can inspect the move
-        const ctx: ScoringContext = {
+        // Build the pure scoring context, run the pipeline.
+        const ctx = buildScoringContext({
           linesCleared,
           clusters: this.scoringClusters,
-          totalClusterPoints,
-          maxClusterSize,
-          colorsInMove,
           moveIndex: this.moveIndex,
           combo: this.combo,
           timeRemaining: this.resolveCurrent,
           currentLevel: this.currentLevel,
-        };
-
-        // Step 3: accumulate additive multiplier bonuses from active Vexes
-        let colorMultBonus = 0;  // scales colour-cluster points
-        let lineMultBonus = 0;  // scales line-count multiplier
-        for (const vex of this.activeVexes) {
-          const m = vex.getMultiplier(ctx, vex.rank);
-          if (vex.kind === 'color') colorMultBonus += m;
-          else if (vex.kind === 'line') lineMultBonus += m;
-        }
-
-        // Step 3b: Add synergy bonuses
-        colorMultBonus += getSynergyMultiplier(this.activeVexes, 'color');
-        lineMultBonus += getSynergyMultiplier(this.activeVexes, 'line');
-
-        // Step 4: apply multipliers
-        // colorMult scales how much colour clusters are worth.
-        // lineMult scales how much clearing more lines is worth.
-        // With no Vexes: colorMult=1, lineMult=1 → identical to old formula.
-        const colorMult = 1 + colorMultBonus;
-        const lineMult = 1 + lineMultBonus;
-        this.lastColorMult = colorMult
-        this.lastLineMult = lineMult
-        const modifiedClusterPoints = totalClusterPoints * colorMult;
-        const moveScore = Math.round(modifiedClusterPoints * (linesCleared * lineMult));
+        });
+        const scored = scoreMove(ctx, this.activeVexes);
+        const totalClusterPoints = scored.totalClusterPoints;
+        this.lastColorMult = scored.colorMult;
+        this.lastLineMult = scored.lineMult;
+        const moveScore = scored.moveScore;
 
         audioManager.playSfx('lineClear', { linesCleared })
 
@@ -2034,8 +2000,8 @@ export class GameScene extends Phaser.Scene {
           }
           // Update other chips
           this.lastChipById['cleared']?.text.setText(`x${linesCleared}`)
-          this.lastChipById['color']?.text.setText(this.formatMultiplierValue(colorMult))
-          this.lastChipById['lineMult']?.text.setText(this.formatMultiplierValue(lineMult))
+          this.lastChipById['color']?.text.setText(this.formatMultiplierValue(scored.colorMult))
+          this.lastChipById['lineMult']?.text.setText(this.formatMultiplierValue(scored.lineMult))
           this.lastChipById['total']?.text.setText(`${calcResult}`)
 
           // Activate chip backgrounds
