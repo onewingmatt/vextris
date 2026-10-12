@@ -146,8 +146,29 @@ export function getLevelParams(level: number): LevelParams {
 }
 
 // ---------------------------------------------------------------------------
-// SRS Wall Kick Tables
+// Rotation wall kicks
 // ---------------------------------------------------------------------------
+
+/**
+ * The offsets `rotatePiece` tries, in order, when a rotation is blocked: the
+ * first one that fits wins, and 0 is the unshifted attempt. Sideways only — it
+ * nudges the piece left or right, never up or down.
+ *
+ * This is the LIVE behaviour, and it is pinned by a test so that changing it is
+ * a deliberate act. It is a five-offset approximation, deliberately NOT the SRS
+ * tables below.
+ */
+export const WALL_KICK_OFFSETS = [0, -1, 1, -2, 2] as const
+
+// ---------------------------------------------------------------------------
+// SRS Wall Kick Tables — DEFINED, NOT WIRED
+// ---------------------------------------------------------------------------
+//
+// Nothing reads these. Rotation uses WALL_KICK_OFFSETS above. Each SRS entry
+// also moves the piece VERTICALLY, so wiring these in would change how rotation
+// behaves against walls and floors — a gameplay change, not a bug fix. Kept as
+// data in case true SRS is ever wanted; delete them otherwise, because a future
+// reader who trusts the name will assume they are live.
 
 // Each sub-array is a list of [dx, dy] kick offsets to try in order.
 // Indices: 0=R, 1=2, 2=L (forward CW rotation states).
@@ -174,7 +195,7 @@ export const SRS_WALL_KICKS: Record<string, [number, number][][]> = {
   ],
 }
 
-// Reverse kick tables for CCW rotation (state transitions 0->L, L->2, 2->R, R->0).
+// Reverse kick tables for CCW rotation (0->L, L->2, 2->R, R->0). Also unwired.
 export const SRS_REVERSE_WALL_KICKS: Record<string, [number, number][][]> = {
   standard: [
     // 0->L

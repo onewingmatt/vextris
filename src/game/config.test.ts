@@ -12,6 +12,7 @@ import {
   DAS_DELAY,
   ARR_DELAY,
   getLevelParams,
+  WALL_KICK_OFFSETS,
 } from './config'
 
 describe('Board constants', () => {
@@ -89,5 +90,22 @@ describe('getLevelParams', () => {
         getLevelParams(lvl - 1).targetScore,
       )
     }
+  })
+})
+describe('WALL_KICK_OFFSETS', () => {
+  // Pins the rotation feel. If this fails, someone changed how rotation behaves
+  // against a wall (e.g. by wiring in SRS_WALL_KICKS, whose entries also move
+  // the piece vertically) — a gameplay change, and it should be a deliberate one.
+  it('is the five sideways offsets, in the order rotatePiece tries them', () => {
+    expect([...WALL_KICK_OFFSETS]).toEqual([0, -1, 1, -2, 2])
+  })
+
+  it('tries the unshifted rotation first, so a free rotation never displaces the piece', () => {
+    expect(WALL_KICK_OFFSETS[0]).toBe(0)
+  })
+
+  it('never moves the piece vertically', () => {
+    expect(WALL_KICK_OFFSETS.every((offset) => Number.isInteger(offset))).toBe(true)
+    expect(WALL_KICK_OFFSETS).toHaveLength(5)
   })
 })

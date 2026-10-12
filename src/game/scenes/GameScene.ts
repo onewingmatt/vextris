@@ -16,6 +16,7 @@ import {
   LINES_PER_LEVEL,
   PIECES,
   BLOCK_COLORS,
+  WALL_KICK_OFFSETS,
 } from '../config'
 import {
   Vex,
@@ -1222,8 +1223,9 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Wall Kicks: Try several offsets if initial rotation is blocked
-    const offsets = [0, -1, 1, -2, 2];
+    // Wall Kicks: try several sideways offsets if the rotation is blocked.
+    // The offsets live in config so the live feel has one home and a test.
+    const offsets = WALL_KICK_OFFSETS;
     for (const dx of offsets) {
       const nextX = this.currentPiece.position.x + dx
       const nextY = this.currentPiece.position.y
