@@ -144,7 +144,10 @@ function replay(name: 'fade' | 'seal' | 'locks', opts: { perturbDrainAt?: number
     }
 
     if (ev.kind === 'lock') {
-      rite.lockPiece()
+      // The return is read here so it is not a phantom: a lock bleeds Resolve but
+      // never ends the run on its own (the recorded locks run stays alive), and the
+      // frame acts on the outcome at the next tick rather than at the lock.
+      check(index, 'lockPiece outcome', null, rite.lockPiece())
       check(index, 'resolve', ev.resolve, rite.resolve)
       return
     }
@@ -172,7 +175,7 @@ function replay(name: 'fade' | 'seal' | 'locks', opts: { perturbDrainAt?: number
       check(index, 'colorMult', ev.colorMult, result.colorMult)
       check(index, 'lineMult', ev.lineMult, result.lineMult)
       check(index, 'totalClusterPoints', ev.totalClusterPoints, result.totalClusterPoints)
-      check(index, 'maxClusterSize', ev.maxClusterSize, result.maxClusterSize)
+      check(index, 'result.maxClusterSize', ev.maxClusterSize, result.maxClusterSize)
 
       // The call reports the outcome the state implies; see PROGRAMS above for
       // why the fade program's level score does not end its run here.
@@ -425,5 +428,25 @@ describe('advanceSeal and reset', () => {
     expect(Array.from({ length: 5 }, () => rite.rng.next())).toEqual(
       Array.from({ length: 5 }, () => fresh.rng.next()),
     )
+  })
+})
+
+describe('the outcome the clear reports, and when the frame acts on it', () => {
+  it('knows the run ended immediately, one tick before the frame acts', () => {
+    // applyClear's outcome is correct the moment the seal breaks; the frame
+    // deliberately reads it from tick() on the following frame instead, so that a
+    // seal does not break a frame earlier than the recorded run does. This pins
+    // both halves, since the caller ignoring `cleared.outcome` is otherwise
+    // invisible.
+    const rite = createRite({ seed: SEED })
+    rite.levelScore = rite.targetScore - 1
+    const result = rite.applyClear({
+      lines: 2,
+      clusters: [{ color: 0x4ade80, blocks: [0, 1, 2].map((x) => ({ x, y: 0 })) }],
+    })
+    expect(result.outcome).toBe('SEAL_BROKEN')
+    expect(rite.outcome).toBe('SEAL_BROKEN')
+    // and the tick that follows agrees rather than re-deriving something else
+    expect(rite.tick(1)).toBe('SEAL_BROKEN')
   })
 })

@@ -171,3 +171,38 @@ Rite.resolve  Rite.resolveMax  Rite.moves
 - Reports on either side of this change: candidate 1 (`update()` is seven systems)
   becomes materially easier once the run state has a home, and candidate 8 (the
   stage machine) is the natural follow-on cut.
+
+## Shipped since this spec was written
+
+Three changes landed after the eight tickets, each requested separately and each
+outside this spec's Out of Scope list. The list above is therefore stale — read these
+as done, not deferred:
+
+- `shop.ts` draws its offers from the run's seeded Rng (commit `cfdbf52`), so the
+  "seeded runs are reproducible" guarantee now holds through the shop.
+- The absent favicon is declared rather than left to 404 on every visit (`fd03983`).
+- Rotation's live wall-kick offsets are named `WALL_KICK_OFFSETS`, pinned by a test, and
+  the two unwired SRS tables are labelled as such (`10ad91c`). Behaviour unchanged.
+
+## Deviations this spec did not admit
+
+Found by a two-axis code review of `a5900e4..HEAD` after the work had shipped.
+
+- **`applyClear()`'s outcome is not read by its caller.** The Implementation Decisions
+  above promise an outcome "so neither win nor loss can be missed by a caller that
+  forgets to check". The scene reads the outcome from `tick()` instead, because the frame
+  has always acted on the run's state at the next tick, and acting on the clear frame
+  breaks a seal one frame earlier than the recorded golden run does. The state is correct
+  either way — `rite.outcome` reports SEAL_BROKEN the moment the crossing clear lands —
+  and `rite.test.ts` now pins both halves. The promise as written is stronger than the
+  code delivers.
+- **`takePact` has no production caller.** The shop's pick mutates the Rite's roster array
+  by reference (add, or upgrade in place) rather than calling it. The array *is* the Rite's,
+  so the mutation does land on the run; what is missing is the seam the grilling session
+  asked for. Delivering it needs an `applyPick(offer)` — the pick is add-or-upgrade, not a
+  single push — and a gate for the shop, which nothing currently covers.
+- **`levelScore` and `resolve` are writable.** They exist because the trace driver sets them
+  mid-run: the fade program zeroes the level score after each clear and drops Resolve to 1.5
+  so the run bleeds out in 400 frames rather than 26,000. The Testing Decisions line "No test
+  reaches into its internals" should read "no test reaches past the public surface" — those
+  two writes are harness requirements, and the recorder is as much a caller as the scene.

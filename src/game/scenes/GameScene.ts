@@ -273,7 +273,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getActiveVexRank(vexId: string): VexRank | 0 {
-    return this.rite.roster.find(vex => vex.id === vexId)?.rank ?? 0
+    return this.rite.rankOf(vexId)
   }
 
   private getQuicksandGravityScale(rank: VexRank | 0): number {
@@ -1886,6 +1886,11 @@ export class GameScene extends Phaser.Scene {
           lines: linesCleared,
           clusters: this.scoringClusters,
         });
+        // `cleared.outcome` is deliberately NOT read here. The Rite's state knows
+        // the run ended the moment this clear crossed the target, but this frame
+        // has always acted on the outcome at the next tick, and acting here would
+        // break a seal one frame earlier than the recorded golden run. The outcome
+        // is read below, from `drained`.
         const totalClusterPoints = cleared.totalClusterPoints;
         this.lastColorMult = cleared.colorMult;
         this.lastLineMult = cleared.lineMult;

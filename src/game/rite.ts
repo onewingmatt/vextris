@@ -25,7 +25,7 @@
 import { getLevelParams, type LevelParams } from './config'
 import { createRng, type Rng } from './rng'
 import { buildScoringContext, scoreMove } from './scoring'
-import type { ScoringCluster, Vex } from './vex'
+import type { ScoringCluster, Vex, VexRank } from './vex'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,6 +97,12 @@ export interface Rite {
   readonly resolveMax: number
   /** The run's outcome, or null while it is still alive. */
   readonly outcome: RiteOutcome | null
+  /**
+   * Rank of a Vex in the roster, or 0 if the run never took it. The one place
+   * that answers the question, so the scene's own rank reads go through here
+   * instead of re-implementing the lookup against the roster.
+   */
+  rankOf(vexId: string): VexRank | 0
 
   /** Apply the realtime Resolve drain for one frame. Returns the run's outcome. */
   tick(deltaMs: number): RiteOutcome | null
@@ -158,7 +164,7 @@ export function createRite(options: RiteOptions = {}): Rite {
   let moves = 0
 
   /** Rank of a Vex in the roster, or 0 if it was never taken. */
-  const rankOf = (id: string): number => roster.find(vex => vex.id === id)?.rank ?? 0
+  const rankOf = (id: string): VexRank | 0 => roster.find(vex => vex.id === id)?.rank ?? 0
 
   /**
    * Resolve bled per second of real time. Ordering matches the scene's
@@ -304,6 +310,7 @@ export function createRite(options: RiteOptions = {}): Rite {
     get targetScore() { return params.targetScore },
     get resolveMax() { return params.resolveMax },
     get outcome() { return outcomeOf() },
+    rankOf,
     tick,
     lockPiece,
     applyClear,
