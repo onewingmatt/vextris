@@ -7,11 +7,12 @@
 import { STARTER_VEX_FACTORIES, upgradeVex, getQuicksandBonusMultiplier, VEX_SYNERGIES } from './vex'
 import { audioManager } from './audio'
 import type { Vex, VexId, VexRank, VexRarity } from './vex'
+import type { Rng } from './rng'
 
 // Import CSS from separate file for better maintainability
 import '../styles/shop.css'
 
-type ShopOffer =
+export type ShopOffer =
   | { type: 'new'; vexId: VexId }
   | { type: 'rankup'; vex: Vex; fromRank: VexRank; toRank: VexRank }
 
@@ -108,16 +109,16 @@ function getOfferWeight(offer: ShopOffer, completedLevel: number): number {
   return Math.max(1, baseWeight * 1.08)
 }
 
-function weightedPop(candidates: WeightedOffer[]): WeightedOffer | null {
+function weightedPop(candidates: WeightedOffer[], rng: Rng): WeightedOffer | null {
   if (candidates.length === 0) return null
 
   const total = candidates.reduce((sum, item) => sum + item.weight, 0)
   if (total <= 0) {
-    const fallbackIndex = Math.floor(Math.random() * candidates.length)
+    const fallbackIndex = rng.int(candidates.length)
     return candidates.splice(fallbackIndex, 1)[0]
   }
 
-  let roll = Math.random() * total
+  let roll = rng.next() * total
   for (let i = 0; i < candidates.length; i++) {
     roll -= candidates[i].weight
     if (roll <= 0) {
@@ -137,7 +138,15 @@ function isSameOffer(a: ShopOffer, b: ShopOffer): boolean {
   return false
 }
 
-function buildOffers(activeVexes: Vex[], completedLevel: number): ShopOffer[] {
+/**
+ * Roll the offers the Crossroads shows after a seal breaks.
+ *
+ * Exported and seeded so the offers are a function of the roster, the seal and
+ * the run's stream. It used to be private and driven by `Math.random()`, which
+ * made offer distribution unobservable and left the run's "same seed, same game"
+ * claim false from the first shop onward.
+ */
+export function rollOffers(activeVexes: Vex[], completedLevel: number, rng: Rng): ShopOffer[] {
   const ownedIds = new Set(activeVexes.map((v) => v.id as VexId))
   const allIds = (Object.keys(STARTER_VEX_FACTORIES) as VexId[]).filter((id) => id !== 'quicksand')
 
@@ -163,7 +172,7 @@ function buildOffers(activeVexes: Vex[], completedLevel: number): ShopOffer[] {
 
   if (newVexPool.length > 0) {
     const weightedNew = weightedCandidates.filter((entry) => entry.offer.type === 'new')
-    const guaranteed = weightedPop(weightedNew)
+    const guaranteed = weightedPop(weightedNew, rng)
     if (guaranteed) {
       chosen.push(guaranteed.offer)
 
@@ -176,7 +185,7 @@ function buildOffers(activeVexes: Vex[], completedLevel: number): ShopOffer[] {
   }
 
   while (chosen.length < 3) {
-    const picked = weightedPop(weightedCandidates)
+    const picked = weightedPop(weightedCandidates, rng)
     if (!picked) break
     chosen.push(picked.offer)
   }
@@ -271,11 +280,12 @@ export function showVexShop(
   completedLevel: number,
   resolveCurrent: number,
   resolveMax: number,
+  rng: Rng,
   onPick: (result: ShopResult) => void,
 ): void {
   audioManager.playSfx('shopOpen')
 
-  const offers = buildOffers(activeVexes, completedLevel)
+  const offers = rollOffers(activeVexes, completedLevel, rng)
   const quicksandRank = getCurrentQuicksandRank(activeVexes)
   const quicksandTiers = buildQuicksandTierStates(resolveCurrent, resolveMax, quicksandRank)
 
