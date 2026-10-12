@@ -16,8 +16,6 @@ import {
   LINES_PER_LEVEL,
   PIECES,
   BLOCK_COLORS,
-  LevelParams,
-  getLevelParams,
 } from '../config'
 import {
   Vex,
@@ -29,8 +27,7 @@ import {
   getJinxedConfig,
   getPressureTimeLimit,
 } from '../vex'
-import { buildScoringContext, scoreMove } from '../scoring'
-import { createRng, createSessionRng, type Rng } from '../rng'
+import { createRite, type Rite } from '../rite'
 import { showVexShop } from '../shop'
 import { DevPanel } from '../devPanel'
 import { updateVexBar } from '../vexBar'
@@ -97,13 +94,17 @@ export class GameScene extends Phaser.Scene {
   private nextPiece: Piece | null = null
   private heldPiece: Piece | null = null
   private canHold = true
-  private score = 0              // total run score
   private level = INITIAL_LEVEL  // gravity level (separate from progression level)
   private lines = 0
   private gravityTimer = 0;
   /** Seeded RNG for all GAMEPLAY randomness (piece streams, jinxed, corruption, garbage).
    *  Same seed + same inputs = same game. Cosmetic randomness (particles) stays Math.random. */
-  private rng: Rng = createSessionRng();
+  /**
+   * The run's rules. Owns the run state, the single gameplay Rng and the roster.
+   * Constructed at `initRun` with the run's seed; this initial value only covers
+   * any call that arrives before a run has started.
+   */
+  private rite: Rite = createRite();
   private gravityDelay = GRAVITY_TABLE[0];
   private clearingLines: number[] = [];
   private scoringClusters: { blocks: { x: number, y: number }[], color: number }[] = []
@@ -111,20 +112,12 @@ export class GameScene extends Phaser.Scene {
 
 
   // --- Level Progression ---
-  private currentLevel = 1
-  private currentLevelScore = 0          // score earned this level only
-  private currentLevelParams!: LevelParams
-  private resolveCurrent = 0             // current Resolve remaining this level
-
-  // Resolve drain tuning (can be tweaked for difficulty)
-  private readonly REALTIME_DRAIN_PER_SECOND = 0.3  // more forgiving real-time drain
-  private readonly PERPIECE_DRAIN = 0.8                // more forgiving drain per piece lock
+  // The seal, its params, the level score and Resolve are the Rite's: see
+  // `this.rite`. The scene keeps what it presents.
 
   // --- Vex System ---
-  /** Active Vexes for this run; all always-on once taken. */
-  private activeVexes: Vex[] = []
-  /** Number of scoring moves (line-clears) this run. Used by ScoringContext. */
-  private moveIndex = 0
+  // The Vexes taken this run are the Rite's roster (one stable array, read here
+  // as `this.rite.roster` so the dev panel's reference survives a restart).
   /** Consecutive scoring moves without a break. Unused for now; always 0. */
   private combo = 0
   /** True while the between-level shop is open; pauses all game logic. */
@@ -180,6 +173,11 @@ export class GameScene extends Phaser.Scene {
   private readonly FRAME_TIME_MS = FRAME_TIME_MS
   private lastUpdateTime = 0
 
+  // Verification trace (?trace=1): records the rules events that a replay must
+  // reproduce. Off unless the flag is present, so it costs nothing in play.
+  private tracing = false
+  private traceLog: Record<string, unknown>[] = []
+
   /** Dev panel (dev builds only) — backtick to open/close */
   private devPanel?: DevPanel
 
@@ -209,6 +207,12 @@ export class GameScene extends Phaser.Scene {
 
   constructor() {
     super({ key: 'GameScene' })
+  }
+
+  /** Append a rules event to the verification trace. No-op unless ?trace=1. */
+  private record(kind: string, data: Record<string, unknown>): void {
+    if (!this.tracing) return
+    this.traceLog.push({ kind, ...data })
   }
 
   private rebuildChipIndex(): void {
@@ -268,7 +272,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getActiveVexRank(vexId: string): VexRank | 0 {
-    return this.activeVexes.find(vex => vex.id === vexId)?.rank ?? 0
+    return this.rite.roster.find(vex => vex.id === vexId)?.rank ?? 0
   }
 
   private getQuicksandGravityScale(rank: VexRank | 0): number {
@@ -316,56 +320,12 @@ export class GameScene extends Phaser.Scene {
     return this.vexTimerGenerations.get(vexId) === generation
   }
 
-  private getRealtimeResolveDrainPerSecond(): number {
-    let drain = this.REALTIME_DRAIN_PER_SECOND
-    drain += this.getActiveVexRank('quicksand') * 0.01
-    drain += this.getActiveVexRank('pressure') * 0.012
-    drain += this.getActiveVexRank('fog') * 0.006
-    drain += this.getActiveVexRank('blackout') * 0.004
-    return drain
-  }
-
-  private getPerPieceResolveDrain(): number {
-    let drain = this.PERPIECE_DRAIN
-    drain += this.getActiveVexRank('quicksand') * 0.025
-    drain += this.getActiveVexRank('lead_fingers') * 0.015
-    drain += this.getActiveVexRank('jinxed') * 0.02
-    drain += this.getActiveVexRank('rising_dread') * 0.018
-    return drain
-  }
-
-  private getResolveRefundForClear(linesCleared: number, maxClusterSize: number): number {
-    if (linesCleared < 2) return 0
-
-    const refundByLines = [0, 0, 0.25, 0.65, 1.2]
-    let refund = refundByLines[Math.min(linesCleared, 4)]
-
-    if (maxClusterSize >= 6) {
-      refund += Math.min(0.6, (maxClusterSize - 5) * 0.06)
-    }
-
-    const refundScale = 1
-      + this.getActiveVexRank('corruption') * 0.015
-      + this.getActiveVexRank('tremor') * 0.01
-      + this.getActiveVexRank('rising_dread') * 0.015
-
-    return refund * refundScale
-  }
-
-  private applyResolveDelta(delta: number): void {
-    this.resolveCurrent = Phaser.Math.Clamp(
-      this.resolveCurrent + delta,
-      0,
-      this.currentLevelParams.resolveMax,
-    )
-  }
-
   private getAmnesiaRank(): VexRank | 0 {
     return this.getActiveVexRank('amnesia')
   }
 
   private getAmnesiaLevelScale(): number {
-    const normalizedLevel = Math.max(0, Math.min(1, (this.currentLevel - 1) / 9))
+    const normalizedLevel = Math.max(0, Math.min(1, (this.rite.level - 1) / 9))
     // Early seals are gentler; later seals realize the full curse.
     return 0.6 + normalizedLevel * 0.4
   }
@@ -463,7 +423,7 @@ export class GameScene extends Phaser.Scene {
     const values: number[] = [1, 0.95, 0.9, 0.82, 0.72, 0.6, 0.48, 0.36, 0.24, 0.14, 0.08]
     const base = this.sampleAmnesiaCurve(values, amnesiaIntensity)
     // Early levels: push visibility toward 1 so ghost stays visible longer.
-    const levelBoost = 0.4 * (1 - (this.currentLevel - 1) / 9) // 0.4 at level 1, 0 at level 10
+    const levelBoost = 0.4 * (1 - (this.rite.level - 1) / 9) // 0.4 at level 1, 0 at level 10
     return Math.min(1, base + (1 - base) * levelBoost)
   }
 
@@ -471,7 +431,7 @@ export class GameScene extends Phaser.Scene {
     const values: number[] = [9999, 260, 220, 190, 160, 140, 120, 105, 90, 80, 70]
     const base = this.sampleAmnesiaCurve(values, amnesiaIntensity)
     // Wider window (less flickery) at early levels; shrinks to 1× by level 10.
-    const levelMultiplier = 1.8 - 0.8 * ((this.currentLevel - 1) / 9)
+    const levelMultiplier = 1.8 - 0.8 * ((this.rite.level - 1) / 9)
     return base * levelMultiplier
   }
 
@@ -503,12 +463,12 @@ export class GameScene extends Phaser.Scene {
     if (rank <= 0) return
 
     const cfg = getJinxedConfig(rank as VexRank)
-    const shouldRotate = cfg.alwaysRotate || this.rng.chance(cfg.rotateChance)
+    const shouldRotate = cfg.alwaysRotate || this.rite.rng.chance(cfg.rotateChance)
 
     if (shouldRotate) {
       let nextShape = this.currentPiece.shape
       let nextColors = this.currentPiece.colors
-      const rotationCount = 1 + this.rng.int(3)
+      const rotationCount = 1 + this.rite.rng.int(3)
 
       for (let step = 0; step < rotationCount; step++) {
         const rotated = this.rotatePieceDataClockwise(nextShape, nextColors)
@@ -523,7 +483,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (cfg.colorScramble) {
-      const randomColor = this.rng.pick(BLOCK_COLORS)
+      const randomColor = this.rite.rng.pick(BLOCK_COLORS)
       this.currentPiece.colors = this.currentPiece.shape.map((row) =>
         row.map((block) => (block ? randomColor : 0))
       )
@@ -565,7 +525,7 @@ export class GameScene extends Phaser.Scene {
           this.mirageActive = true
           let colOffset = Phaser.Math.Between(-cfg.colRange, cfg.colRange)
           if (colOffset === 0) {
-            colOffset = this.rng.chance(0.5) ? -1 : 1
+            colOffset = this.rite.rng.chance(0.5) ? -1 : 1
           }
           this.mirageColOffset = colOffset
           audioManager.playSfx('mirage', { rank })
@@ -590,7 +550,7 @@ export class GameScene extends Phaser.Scene {
 
   private getPressurePenaltyScale(): number {
     // Ramps from 0.4 at level 1 to 1.0 at level 10, matching Lead Fingers curve.
-    return 0.4 + 0.6 * ((this.currentLevel - 1) / 9)
+    return 0.4 + 0.6 * ((this.rite.level - 1) / 9)
   }
 
   private resetPressureCountdownForCurrentPiece(): void {
@@ -646,7 +606,7 @@ export class GameScene extends Phaser.Scene {
     const cellsByRank = [0, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5]
     const rawCells = cellsByRank[rank]
     // Scale intensity up over levels: 50% at level 1, 100% at level 10.
-    const levelScale = 0.5 + 0.5 * ((this.currentLevel - 1) / 9)
+    const levelScale = 0.5 + 0.5 * ((this.rite.level - 1) / 9)
     const scaledCells = rawCells === 0 ? 0 : Math.max(1, Math.round(rawCells * levelScale))
     return {
       intervalMs: intervalByRank[rank],
@@ -723,13 +683,13 @@ export class GameScene extends Phaser.Scene {
 
     const changes = Math.min(cellsPerTick, targetPool.length)
     for (let index = 0; index < changes; index++) {
-      const pick = this.rng.int(targetPool.length)
+      const pick = this.rite.rng.int(targetPool.length)
       const { x, y } = targetPool.splice(pick, 1)[0]
       const current = this.board[y][x].color
 
       let nextColor = current
       for (let attempt = 0; attempt < 6 && nextColor === current; attempt++) {
-        nextColor = this.rng.pick(BLOCK_COLORS)
+        nextColor = this.rite.rng.pick(BLOCK_COLORS)
       }
       this.board[y][x].color = nextColor
     }
@@ -1007,14 +967,21 @@ export class GameScene extends Phaser.Scene {
       if (savedLevel) this.highScoreLevel = parseInt(savedLevel, 10)
     } catch { /* localStorage may not be available */ }
 
+    // Verification trace: expose the log so the recorder can read it, and let a
+    // driver step the scene by hand once the game loop is asleep.
+    this.tracing = new URLSearchParams(window.location.search).has('trace')
+    if (this.tracing) {
+      ;(window as unknown as { __vextrisTrace?: Record<string, unknown>[] }).__vextrisTrace = this.traceLog
+    }
+
     // Dev panel (backtick to toggle) is always available, but it only auto-opens when ?dev is present.
     const urlParams = new URLSearchParams(window.location.search)
     const hasDevParam = urlParams.has('dev')
 
-    this.devPanel = new DevPanel(this.activeVexes, (vexes) => {
+    this.devPanel = new DevPanel(this.rite.roster, (vexes) => {
       // Keep scene state authoritative even if the panel ever holds a stale
       // array reference (e.g., after external tooling mutates state).
-      this.activeVexes.splice(0, this.activeVexes.length, ...vexes)
+      this.rite.roster.splice(0, this.rite.roster.length, ...vexes)
 
       // When dev panel changes vexes, re-setup all effects
       this.clearAllVexTimers();
@@ -1115,11 +1082,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private generateNextPiece() {
-    const data = this.rng.pick(PIECES)
+    const data = this.rite.rng.pick(PIECES)
     this.nextPiece = {
       type: data.type,
       shape: data.shape.map(row => [...row]),
-      colors: data.shape.map(row => row.map(block => block ? this.rng.pick(BLOCK_COLORS) : 0)),
+      colors: data.shape.map(row => row.map(block => block ? this.rite.rng.pick(BLOCK_COLORS) : 0)),
       position: { x: 11, y: 2 },
       rotationState: 0,
     }
@@ -1140,7 +1107,7 @@ export class GameScene extends Phaser.Scene {
   private getLeadFingersPenaltyScale(): number {
     // Make Lead Fingers less punishing in early progression levels.
     // Scale spans [0.4, 1] across levels 1–10.
-    const level = Math.max(1, Math.min(10, this.currentLevel))
+    const level = Math.max(1, Math.min(10, this.rite.level))
     return 0.4 + 0.6 * ((level - 1) / 9)
   }
 
@@ -1310,7 +1277,7 @@ export class GameScene extends Phaser.Scene {
     const newHeldPiece: Piece = {
       type: holdData.type,
       shape: holdData.shape.map(row => [...row]),
-      colors: holdData.shape.map(row => row.map(block => block ? this.rng.pick(BLOCK_COLORS) : 0)),
+      colors: holdData.shape.map(row => row.map(block => block ? this.rite.rng.pick(BLOCK_COLORS) : 0)),
       position: { x: 0, y: 0 },
       rotationState: 0,
     };
@@ -1321,7 +1288,7 @@ export class GameScene extends Phaser.Scene {
       this.currentPiece = {
         type: data.type,
         shape: data.shape.map(row => [...row]),
-        colors: data.shape.map(row => row.map(block => block ? this.rng.pick(BLOCK_COLORS) : 0)),
+        colors: data.shape.map(row => row.map(block => block ? this.rite.rng.pick(BLOCK_COLORS) : 0)),
         position: { x: Math.floor(BOARD_WIDTH / 2) - Math.floor(data.shape[0].length / 2), y: 0 },
         rotationState: 0,
       };
@@ -1369,7 +1336,10 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    this.applyResolveDelta(-this.getPerPieceResolveDrain())
+    // The frame does not act on the outcome: it has always checked the run on
+    // the following tick, and asking here would break the seal a frame early.
+    this.rite.lockPiece()
+    this.record('lock', { resolve: this.rite.resolve })
 
     audioManager.playSfx('lock')
     const quicksandRank = this.getActiveVexRank('quicksand')
@@ -1895,8 +1865,10 @@ export class GameScene extends Phaser.Scene {
     if (this.clearTimer > 0) {
       this.clearTimer = Math.max(0, this.clearTimer - frameDelta);
       if (this.clearTimer === 0) {
-        // --- Scoring: Color Clusters + Vex multipliers (pure pipeline in scoring.ts) ---
-        // We MUST score BEFORE clearing the board rows.
+        // --- Scoring: the finished clear goes to the Rite ---
+        // Scoring happens inside the call, before the rows are cleared below.
+        // That ordering is now a property of applyClear rather than a comment
+        // asking a future reader to preserve it.
         const linesCleared = this.clearingLines.length;
         this.lines += linesCleared;
 
@@ -1905,31 +1877,37 @@ export class GameScene extends Phaser.Scene {
           this.floatingTextPool[i].active = false;
         }
 
-        // Build the pure scoring context, run the pipeline.
-        const ctx = buildScoringContext({
-          linesCleared,
+        const movesBefore = this.rite.moves;
+        const resolveBefore = this.rite.resolve;
+        const sealLevel = this.rite.level;
+        const cleared = this.rite.applyClear({
+          lines: linesCleared,
           clusters: this.scoringClusters,
-          moveIndex: this.moveIndex,
-          combo: this.combo,
-          timeRemaining: this.resolveCurrent,
-          currentLevel: this.currentLevel,
         });
-        const scored = scoreMove(ctx, this.activeVexes);
-        const totalClusterPoints = scored.totalClusterPoints;
-        this.lastColorMult = scored.colorMult;
-        this.lastLineMult = scored.lineMult;
-        const moveScore = scored.moveScore;
+        const totalClusterPoints = cleared.totalClusterPoints;
+        this.lastColorMult = cleared.colorMult;
+        this.lastLineMult = cleared.lineMult;
+        const moveScore = cleared.earned;
 
         audioManager.playSfx('lineClear', { linesCleared })
 
-        this.score += moveScore;
-        this.currentLevelScore += moveScore;
-        this.moveIndex += 1;
-
-        const resolveRefund = this.getResolveRefundForClear(linesCleared, ctx.maxClusterSize)
-        if (resolveRefund > 0) {
-          this.applyResolveDelta(resolveRefund)
-        }
+        this.record('clear', {
+          lines: linesCleared,
+          clusters: this.scoringClusters.map(c => ({ color: c.color, size: c.blocks.length })),
+          maxClusterSize: cleared.maxClusterSize,
+          moveIndex: movesBefore,
+          combo: this.combo,
+          timeRemaining: resolveBefore,
+          level: sealLevel,
+          score: this.rite.score,
+          levelScore: this.rite.levelScore,
+          moves: this.rite.moves,
+          refund: cleared.refund,
+          resolve: this.rite.resolve,
+          colorMult: cleared.colorMult,
+          lineMult: cleared.lineMult,
+          totalClusterPoints: cleared.totalClusterPoints,
+        })
 
         const calcResult = moveScore;
         if (this.lastCalcBox) {
@@ -2004,8 +1982,8 @@ export class GameScene extends Phaser.Scene {
           }
           // Update other chips
           this.lastChipById['cleared']?.text.setText(`x${linesCleared}`)
-          this.lastChipById['color']?.text.setText(this.formatMultiplierValue(scored.colorMult))
-          this.lastChipById['lineMult']?.text.setText(this.formatMultiplierValue(scored.lineMult))
+          this.lastChipById['color']?.text.setText(this.formatMultiplierValue(cleared.colorMult))
+          this.lastChipById['lineMult']?.text.setText(this.formatMultiplierValue(cleared.lineMult))
           this.lastChipById['total']?.text.setText(`${calcResult}`)
 
           // Activate chip backgrounds
@@ -2126,16 +2104,16 @@ export class GameScene extends Phaser.Scene {
     }
 
     // --- Resolve Drain: Hybrid system ---
-    this.applyResolveDelta(-(frameDelta * this.getRealtimeResolveDrainPerSecond() / 1000))
+    // The Rite drains and reports the run's state from the same two conditions
+    // the frame used to evaluate by hand: the seal first, then Resolve.
+    const drained = this.rite.tick(frameDelta)
+    this.record('drain', { dt: frameDelta, resolve: this.rite.resolve })
 
-    // Win condition: reached target score before Resolve ran out
-    if (this.currentLevelScore >= this.currentLevelParams.targetScore) {
+    if (drained === 'SEAL_BROKEN') {
       this.onLevelComplete();
       return;
     }
-
-    // Fail condition: Resolve expired and target not met
-    if (this.resolveCurrent <= 0) {
+    if (drained === 'RESOLVE_FADED') {
       this.onLevelFailed();
       return;
     }
@@ -2235,23 +2213,23 @@ export class GameScene extends Phaser.Scene {
         lineChip.label.setVisible(false)
       }
     }
-    if (this.lastHudLevel !== this.currentLevel) {
-      this.lastHudLevel = this.currentLevel;
-      this.hudLevelText.setText(`${this.currentLevel}`);
+    if (this.lastHudLevel !== this.rite.level) {
+      this.lastHudLevel = this.rite.level;
+      this.hudLevelText.setText(`${this.rite.level}`);
     }
-    if (this.lastHudScore !== this.currentLevelScore || this.lastHudScoreTarget !== this.currentLevelParams.targetScore) {
-      this.lastHudScore = this.currentLevelScore;
-      this.lastHudScoreTarget = this.currentLevelParams.targetScore;
-      this.hudScoreText.setText(`${this.currentLevelScore} / ${this.currentLevelParams.targetScore}`)
+    if (this.lastHudScore !== this.rite.levelScore || this.lastHudScoreTarget !== this.rite.targetScore) {
+      this.lastHudScore = this.rite.levelScore;
+      this.lastHudScoreTarget = this.rite.targetScore;
+      this.hudScoreText.setText(`${this.rite.levelScore} / ${this.rite.targetScore}`)
     }
-    const resolveTimeMs = Math.ceil(this.resolveCurrent);
-    if (this.lastHudTime !== resolveTimeMs || this.lastHudResolveMax !== this.currentLevelParams.resolveMax) {
+    const resolveTimeMs = Math.ceil(this.rite.resolve);
+    if (this.lastHudTime !== resolveTimeMs || this.lastHudResolveMax !== this.rite.resolveMax) {
       this.lastHudTime = resolveTimeMs;
-      this.lastHudResolveMax = this.currentLevelParams.resolveMax;
-      this.hudTimeText.setText(`${resolveTimeMs} / ${this.currentLevelParams.resolveMax}`)
+      this.lastHudResolveMax = this.rite.resolveMax;
+      this.hudTimeText.setText(`${resolveTimeMs} / ${this.rite.resolveMax}`)
     }
     // Low-resolve pulse: flash red when below 20% to signal urgency.
-    const resolveFraction = this.resolveCurrent / this.currentLevelParams.resolveMax
+    const resolveFraction = this.rite.resolve / this.rite.resolveMax
     if (resolveFraction < 0.2) {
       const pulse = 0.45 + 0.55 * Math.abs(Math.sin(time / 350))
       this.hudTimeText.setAlpha(pulse)
@@ -2275,7 +2253,7 @@ export class GameScene extends Phaser.Scene {
     // Update Balatro-style Vex bar across the top
     const now = this.time.now;
     const showRankUpAnimation = (now - this.lastRankedUpVexTime) < 1000; // Show for 1 second
-    updateVexBar(this.activeVexes, showRankUpAnimation ? this.lastRankedUpVexId : undefined)
+    updateVexBar(this.rite.roster, showRankUpAnimation ? this.lastRankedUpVexId : undefined)
 
     // If Fog Vex is active, drive the canvas height from board state.
     const fogRank = this.getActiveVexRank('fog')
@@ -2338,10 +2316,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private saveRunHistory(): void {
-    const isNewHighScore = this.score > this.highScore
-    const isNewHighLevel = this.currentLevel > this.highScoreLevel
-    if (isNewHighScore) this.highScore = this.score
-    if (isNewHighLevel) this.highScoreLevel = this.currentLevel
+    const isNewHighScore = this.rite.score > this.highScore
+    const isNewHighLevel = this.rite.level > this.highScoreLevel
+    if (isNewHighScore) this.highScore = this.rite.score
+    if (isNewHighLevel) this.highScoreLevel = this.rite.level
     try {
       localStorage.setItem('vextris_high_score', String(this.highScore))
       localStorage.setItem('vextris_high_level', String(this.highScoreLevel))
@@ -2349,7 +2327,7 @@ export class GameScene extends Phaser.Scene {
 
     const newBestTag = isNewHighScore ? ' (NEW BEST!)' : ''
     this.gameOverStatsText.setText(
-      `SCORE: ${this.score}${newBestTag}\nLEVEL REACHED: ${this.currentLevel}\nBEST SCORE: ${this.highScore}  BEST LEVEL: ${this.highScoreLevel}`
+      `SCORE: ${this.rite.score}${newBestTag}\nLEVEL REACHED: ${this.rite.level}\nBEST SCORE: ${this.highScore}  BEST LEVEL: ${this.highScoreLevel}`
     )
     this.gameOverStatsText.setVisible(true)
   }
@@ -2359,24 +2337,25 @@ export class GameScene extends Phaser.Scene {
    * Pauses the game and opens the Vex shop. On card pick, advances the level.
    */
   private onLevelComplete(): void {
+    this.record('outcome', { outcome: 'SEAL_BROKEN', level: this.rite.level, score: this.rite.score })
     this.gameState = 'SHOP'
     audioManager.playSfx('levelClear')
 
     // Visual flash before the overlay
     const boardCenterX = this.BOARD_OFFSET_X + this.BOARD_PIXEL_WIDTH / 2
     const boardCenterY = this.BOARD_OFFSET_Y + this.BOARD_PIXEL_HEIGHT / 2
-    this.showFloatingText(boardCenterX, boardCenterY, `SEAL ${this.currentLevel} BROKEN!`, '#cfa36b', 1.2)
+    this.showFloatingText(boardCenterX, boardCenterY, `SEAL ${this.rite.level} BROKEN!`, '#cfa36b', 1.2)
     this.cameras.main.flash(300, 190, 112, 91, false)
 
     // Fade the board out before the shop overlay appears, fade back in when the level starts.
     this.cameras.main.fadeOut(350, 0, 0, 0)
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      showVexShop(this.activeVexes, this.currentLevel, this.resolveCurrent, this.currentLevelParams.resolveMax, (result) => {
+      showVexShop(this.rite.roster, this.rite.level, this.rite.resolve, this.rite.resolveMax, (result) => {
         if (result.rankedUpVexId) {
           this.lastRankedUpVexId = result.rankedUpVexId;
           this.lastRankedUpVexTime = this.time.now;
         }
-        this.devPanel?.syncFromGame(this.activeVexes)
+        this.devPanel?.syncFromGame(this.rite.roster)
         this.startNextLevel()
         this.cameras.main.fadeIn(350, 0, 0, 0)
       })
@@ -2389,10 +2368,7 @@ export class GameScene extends Phaser.Scene {
    */
   private startNextLevel(): void {
     this.gameState = 'PLAYING'
-    this.currentLevel++
-    this.currentLevelParams = getLevelParams(this.currentLevel)
-    this.currentLevelScore = 0
-    this.resolveCurrent = this.currentLevelParams.resolveMax
+    this.rite.advanceSeal()
 
     // Reset board for a fresh level
     this.initializeBoard()
@@ -2415,6 +2391,7 @@ export class GameScene extends Phaser.Scene {
    * Currently triggers game over; can later be wired to a retry flow.
    */
   private onLevelFailed(): void {
+    this.record('outcome', { outcome: 'RESOLVE_FADED', level: this.rite.level, score: this.rite.score })
     this.gameState = 'GAMEOVER'
     this.saveRunHistory()
     this.gameOverBg.setVisible(true)
@@ -2567,7 +2544,7 @@ export class GameScene extends Phaser.Scene {
     // Choose random gap positions (distinct indices)
     const gapPositions = new Set<number>();
     while (gapPositions.size < gapsPerRow) {
-      gapPositions.add(this.rng.int(BOARD_WIDTH));
+      gapPositions.add(this.rite.rng.int(BOARD_WIDTH));
     }
 
     // Fill bottom row
@@ -2576,7 +2553,7 @@ export class GameScene extends Phaser.Scene {
       if (gapPositions.has(x)) {
         this.board[bottomRow][x] = { filled: false, color: COLORS.empty };
       } else {
-        const randomColor = this.rng.pick(garbageColors);
+        const randomColor = this.rite.rng.pick(garbageColors);
         this.board[bottomRow][x] = { filled: true, color: randomColor };
       }
     }
@@ -2734,7 +2711,7 @@ export class GameScene extends Phaser.Scene {
    * Called at the start of each level after activeVexes is populated.
    */
   private setupVexEffects(): void {
-    const activeIds = new Set(this.activeVexes.map(vex => vex.id))
+    const activeIds = new Set(this.rite.roster.map(vex => vex.id))
 
     if (!activeIds.has('blackout')) {
       disableBlackout()
@@ -2759,7 +2736,7 @@ export class GameScene extends Phaser.Scene {
       this.pressureCountdown = null
     }
 
-    for (const vex of this.activeVexes) {
+    for (const vex of this.rite.roster) {
       if (vex.id === 'blackout' || vex.id === 'fog') {
         vex.onApply?.(vex.rank)
       }
@@ -2796,8 +2773,15 @@ export class GameScene extends Phaser.Scene {
   private initRun(): void {
     // Fresh gameplay RNG per run. Seed is logged so any run can be replayed
     // from the console (and later: a ?seed= URL param for bug reports).
-    const seed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0
-    this.rng = createRng(seed)
+    // A ?seed= URL param makes a run reproducible (bug reports, the golden-run
+    // fixture). Absent one, the seed is generated and logged as before.
+    const seedParam = new URLSearchParams(window.location.search).get('seed')
+    const seed = seedParam !== null && /^\d+$/.test(seedParam)
+      ? (Number(seedParam) >>> 0)
+      : (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0
+    // The Rite is reset rather than replaced: a restart must not hand the dev
+    // panel a new roster array, and `initRun` runs again on every restart.
+    this.rite.reset(seed)
     console.info(`[vextris] run seed: ${seed}`)
 
     disableBlackout()
@@ -2817,20 +2801,9 @@ export class GameScene extends Phaser.Scene {
     }
     this.game.canvas.style.filter = ''
 
-    // Level progression
-    this.currentLevel = 1
-    this.currentLevelParams = getLevelParams(1)
-    this.currentLevelScore = 0
-    this.resolveCurrent = this.currentLevelParams.resolveMax
-
-    // Scoring bookkeeping
-    this.score = 0
-    this.moveIndex = 0
+    // The run's rules are the Rite's: seal, its params, level score, Resolve,
+    // tribute, moves and the roster all reset there, in place.
     this.combo = 0
-
-    // Vexes are chosen via the shop between levels.
-    // Keep the same array instance so DevPanel references stay valid after reset.
-    this.activeVexes.length = 0
   }
   private getMinimumFogRows(fogRank: number): number {
     const clampedRank = Math.max(0, Math.min(10, Math.floor(fogRank)))
@@ -2968,7 +2941,7 @@ export class GameScene extends Phaser.Scene {
 
     grimoireList.innerHTML = '';
     
-    if (this.activeVexes.length === 0) {
+    if (this.rite.roster.length === 0) {
       const msg = document.createElement('div');
       msg.className = 'grimoire-pact';
       msg.style.gridColumn = '1 / -1';
@@ -2976,7 +2949,7 @@ export class GameScene extends Phaser.Scene {
       msg.textContent = 'The altar is clean. No pacts have been struck.';
       grimoireList.appendChild(msg);
     } else {
-      this.activeVexes.forEach(vex => {
+      this.rite.roster.forEach(vex => {
         const pact = document.createElement('div');
         pact.className = 'grimoire-pact';
         
@@ -3021,7 +2994,7 @@ export class GameScene extends Phaser.Scene {
     if (this.gameOverBg) this.gameOverBg.setVisible(false);
     if (this.gameOverText) this.gameOverText.setVisible(false);
     if (this.gameOverStatsText) this.gameOverStatsText.setVisible(false);
-    this.devPanel?.syncFromGame(this.activeVexes)
+    this.devPanel?.syncFromGame(this.rite.roster)
   }
 
   private abandonRun() {

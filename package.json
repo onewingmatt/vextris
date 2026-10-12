@@ -12,6 +12,8 @@
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:smoke:preview": "node scripts/smoke-test.mjs --mode=preview",
     "test:smoke:dev": "node scripts/smoke-test.mjs --mode=dev",
+    "trace:record": "node scripts/record-rite-trace.mjs",
+    "trace:verify": "node scripts/verify-rite-trace.mjs",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit"
   },

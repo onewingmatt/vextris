@@ -1,0 +1,1848 @@
+{
+  "program": "fade",
+  "roster": [
+    {
+      "id": "quicksand",
+      "rank": 3
+    },
+    {
+      "id": "fog",
+      "rank": 2
+    },
+    {
+      "id": "tremor",
+      "rank": 3
+    },
+    {
+      "id": "jinxed",
+      "rank": 2
+    }
+  ],
+  "trace": [
+    {
+      "kind": "drain",
+      "dt": 16.666666666666668,
+      "resolve": 149.9943
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.98746
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.98062
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.97377999999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.96693999999997
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.96009999999995
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.95325999999994
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.94641999999993
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.93957999999992
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9327399999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9258999999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9190599999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.91221999999988
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.90537999999987
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.89853999999985
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.89169999999984
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.88485999999983
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.87801999999982
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8711799999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8643399999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8574999999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.85065999999978
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.84381999999977
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.83697999999976
+    },
+    {
+      "kind": "clear",
+      "lines": 1,
+      "clusters": [
+        {
+          "color": 16281969,
+          "size": 3
+        }
+      ],
+      "maxClusterSize": 3,
+      "moveIndex": 0,
+      "combo": 0,
+      "timeRemaining": 149.83697999999976,
+      "level": 1,
+      "score": 41,
+      "levelScore": 41,
+      "moves": 1,
+      "refund": 0,
+      "resolve": 149.83697999999976,
+      "colorMult": 2.6,
+      "lineMult": 1.76,
+      "totalClusterPoints": 9
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.83013999999974
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.82329999999973
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.81645999999972
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8096199999997
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8027799999997
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.7959399999997
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.78909999999968
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.78225999999967
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.77541999999966
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.76857999999964
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.76173999999963
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.75489999999962
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.7480599999996
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.7412199999996
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.7343799999996
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.72753999999958
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.72069999999957
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.71385999999956
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.70701999999955
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.70017999999953
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.69333999999952
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.6864999999995
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.6796599999995
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.6728199999995
+    },
+    {
+      "kind": "clear",
+      "lines": 2,
+      "clusters": [
+        {
+          "color": 4906624,
+          "size": 4
+        },
+        {
+          "color": 6333946,
+          "size": 2
+        }
+      ],
+      "maxClusterSize": 4,
+      "moveIndex": 1,
+      "combo": 0,
+      "timeRemaining": 149.6728199999995,
+      "level": 1,
+      "score": 224,
+      "levelScore": 183,
+      "moves": 2,
+      "refund": 0.2575,
+      "resolve": 149.93031999999948,
+      "colorMult": 2.6,
+      "lineMult": 1.76,
+      "totalClusterPoints": 20
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.92347999999947
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.91663999999946
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.90979999999945
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.90295999999944
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.89611999999943
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.88927999999942
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8824399999994
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8755999999994
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.86875999999938
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.86191999999937
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.85507999999936
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.84823999999935
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.84139999999934
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.83455999999933
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.82771999999932
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8208799999993
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8140399999993
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.80719999999928
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.80035999999927
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.79351999999926
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.78667999999925
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.77983999999924
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.77299999999923
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.76615999999922
+    },
+    {
+      "kind": "clear",
+      "lines": 3,
+      "clusters": [
+        {
+          "color": 16436245,
+          "size": 6
+        }
+      ],
+      "maxClusterSize": 6,
+      "moveIndex": 2,
+      "combo": 0,
+      "timeRemaining": 149.76615999999922,
+      "level": 1,
+      "score": 718,
+      "levelScore": 494,
+      "moves": 3,
+      "refund": 0.7313,
+      "resolve": 150,
+      "colorMult": 2.6,
+      "lineMult": 1.76,
+      "totalClusterPoints": 36
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.99316
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.98631999999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.97947999999997
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.97263999999996
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.96579999999994
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.95895999999993
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.95211999999992
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9452799999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9384399999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9315999999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.92475999999988
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.91791999999987
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.91107999999986
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.90423999999985
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.89739999999983
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.89055999999982
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8837199999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8768799999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8700399999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.86319999999978
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.85635999999977
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.84951999999976
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.84267999999975
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.83583999999973
+    },
+    {
+      "kind": "clear",
+      "lines": 4,
+      "clusters": [
+        {
+          "color": 12616956,
+          "size": 8
+        }
+      ],
+      "maxClusterSize": 8,
+      "moveIndex": 3,
+      "combo": 0,
+      "timeRemaining": 149.83583999999973,
+      "level": 1,
+      "score": 1889,
+      "levelScore": 1171,
+      "moves": 4,
+      "refund": 1.4214,
+      "resolve": 150,
+      "colorMult": 2.6,
+      "lineMult": 1.76,
+      "totalClusterPoints": 64
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.99316
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.98631999999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.97947999999997
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.97263999999996
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.96579999999994
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.95895999999993
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.95211999999992
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9452799999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9384399999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9315999999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.92475999999988
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.91791999999987
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.91107999999986
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.90423999999985
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.89739999999983
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.89055999999982
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8837199999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8768799999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8700399999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.86319999999978
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.85635999999977
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.84951999999976
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.84267999999975
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.83583999999973
+    },
+    {
+      "kind": "clear",
+      "lines": 2,
+      "clusters": [
+        {
+          "color": 16486972,
+          "size": 5
+        }
+      ],
+      "maxClusterSize": 5,
+      "moveIndex": 4,
+      "combo": 0,
+      "timeRemaining": 149.83583999999973,
+      "level": 1,
+      "score": 2118,
+      "levelScore": 229,
+      "moves": 5,
+      "refund": 0.2575,
+      "resolve": 150,
+      "colorMult": 2.6,
+      "lineMult": 1.76,
+      "totalClusterPoints": 25
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.49316
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.48632
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.4794800000000001
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.4726400000000002
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.4658000000000002
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.4589600000000003
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.4521200000000003
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.4452800000000003
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.4384400000000004
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.4316000000000004
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.4247600000000005
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.4179200000000005
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.4110800000000006
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.4042400000000006
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.3974000000000006
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.3905600000000007
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.3837200000000007
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.3768800000000008
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.3700400000000008
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.3632000000000009
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.356360000000001
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.349520000000001
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.342680000000001
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.335840000000001
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.329000000000001
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.3221600000000011
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.3153200000000012
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.3084800000000012
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.3016400000000012
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2948000000000013
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2879600000000013
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2811200000000014
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2742800000000014
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2674400000000015
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2606000000000015
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2537600000000015
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2469200000000016
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2400800000000016
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2332400000000017
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2264000000000017
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2195600000000018
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2127200000000018
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.2058800000000018
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.1990400000000019
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.192200000000002
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.185360000000002
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.178520000000002
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.171680000000002
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.164840000000002
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.1580000000000021
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.1511600000000022
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.1443200000000022
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.1374800000000023
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.1306400000000023
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.1238000000000024
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.1169600000000024
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.1101200000000024
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.1032800000000025
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.0964400000000025
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.0896000000000026
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.0827600000000026
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.0759200000000027
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.0690800000000027
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.0622400000000027
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.0554000000000028
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.0485600000000028
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.0417200000000029
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.034880000000003
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.028040000000003
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.021200000000003
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.014360000000003
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.007520000000003
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 1.0006800000000031
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9938400000000032
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9870000000000032
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9801600000000033
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9733200000000033
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9664800000000033
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9596400000000034
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9528000000000034
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9459600000000035
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9391200000000035
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9322800000000036
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9254400000000036
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9186000000000036
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9117600000000037
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.9049200000000037
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.8980800000000038
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.8912400000000038
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.8844000000000038
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.8775600000000039
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.8707200000000039
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.863880000000004
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.857040000000004
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.8502000000000041
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.8433600000000041
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.8365200000000041
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.8296800000000042
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.8228400000000042
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.8160000000000043
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.8091600000000043
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.8023200000000044
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.7954800000000044
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.7886400000000044
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.7818000000000045
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.7749600000000045
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.7681200000000046
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.7612800000000046
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.7544400000000047
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.7476000000000047
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.7407600000000047
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.7339200000000048
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.7270800000000048
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.7202400000000049
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.7134000000000049
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.706560000000005
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.699720000000005
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.692880000000005
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.6860400000000051
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.6792000000000051
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.6723600000000052
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.6655200000000052
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.6586800000000053
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.6518400000000053
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.6450000000000053
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.6381600000000054
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.6313200000000054
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.6244800000000055
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.6176400000000055
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.6108000000000056
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.6039600000000056
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.5971200000000056
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.5902800000000057
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.5834400000000057
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.5766000000000058
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.5697600000000058
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.5629200000000059
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.5560800000000059
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.549240000000006
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.542400000000006
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.535560000000006
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.5287200000000061
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.5218800000000061
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.5150400000000062
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.5082000000000062
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.5013600000000062
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.49452000000000623
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.4876800000000062
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.4808400000000062
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.4740000000000062
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.4671600000000062
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.46032000000000617
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.45348000000000616
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.44664000000000614
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.43980000000000613
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.4329600000000061
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.4261200000000061
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.4192800000000061
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.4124400000000061
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.40560000000000607
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.39876000000000605
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.39192000000000604
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.38508000000000603
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.378240000000006
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.371400000000006
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.364560000000006
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.357720000000006
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.35088000000000596
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.34404000000000595
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.33720000000000594
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.3303600000000059
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.3235200000000059
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.3166800000000059
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.3098400000000059
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.3030000000000059
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.29616000000000586
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.28932000000000585
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.28248000000000584
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.2756400000000058
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.2688000000000058
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.2619600000000058
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.2551200000000058
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.24828000000000577
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.24144000000000576
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.23460000000000575
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.22776000000000574
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.22092000000000572
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.2140800000000057
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.2072400000000057
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.20040000000000568
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.19356000000000567
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.18672000000000566
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.17988000000000565
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.17304000000000563
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.16620000000000562
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.1593600000000056
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.1525200000000056
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.14568000000000558
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.13884000000000557
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.13200000000000556
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.12516000000000554
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.11832000000000555
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.11148000000000555
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.10464000000000555
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.09780000000000555
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.09096000000000555
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.08412000000000555
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.07728000000000555
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.07044000000000555
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.06360000000000555
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.056760000000005556
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.04992000000000556
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.04308000000000556
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.03624000000000556
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.02940000000000556
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.02256000000000556
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.015720000000005563
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.008880000000005564
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0.0020400000000055643
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 0
+    },
+    {
+      "kind": "outcome",
+      "outcome": "RESOLVE_FADED",
+      "level": 1,
+      "score": 2118
+    }
+  ]
+}

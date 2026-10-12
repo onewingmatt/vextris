@@ -1,0 +1,320 @@
+{
+  "program": "seal",
+  "roster": [
+    {
+      "id": "quicksand",
+      "rank": 3
+    },
+    {
+      "id": "fog",
+      "rank": 2
+    },
+    {
+      "id": "tremor",
+      "rank": 3
+    },
+    {
+      "id": "jinxed",
+      "rank": 2
+    }
+  ],
+  "trace": [
+    {
+      "kind": "drain",
+      "dt": 16.666666666666668,
+      "resolve": 149.9943
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.98746
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.98062
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.97377999999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.96693999999997
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.96009999999995
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.95325999999994
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.94641999999993
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.93957999999992
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9327399999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9258999999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9190599999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.91221999999988
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.90537999999987
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.89853999999985
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.89169999999984
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.88485999999983
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.87801999999982
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8711799999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8643399999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8574999999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.85065999999978
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.84381999999977
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.83697999999976
+    },
+    {
+      "kind": "clear",
+      "lines": 2,
+      "clusters": [
+        {
+          "color": 4906624,
+          "size": 5
+        }
+      ],
+      "maxClusterSize": 5,
+      "moveIndex": 0,
+      "combo": 0,
+      "timeRemaining": 149.83697999999976,
+      "level": 1,
+      "score": 229,
+      "levelScore": 229,
+      "moves": 1,
+      "refund": 0.2575,
+      "resolve": 150,
+      "colorMult": 2.6,
+      "lineMult": 1.76,
+      "totalClusterPoints": 25
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.99316
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.98631999999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.97947999999997
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.97263999999996
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.96579999999994
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.95895999999993
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.95211999999992
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9452799999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9384399999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.9315999999999
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.92475999999988
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.91791999999987
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.91107999999986
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.90423999999985
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.89739999999983
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.89055999999982
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8837199999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8768799999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.8700399999998
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.86319999999978
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.85635999999977
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.84951999999976
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.84267999999975
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.83583999999973
+    },
+    {
+      "kind": "clear",
+      "lines": 3,
+      "clusters": [
+        {
+          "color": 16281969,
+          "size": 7
+        }
+      ],
+      "maxClusterSize": 7,
+      "moveIndex": 1,
+      "combo": 0,
+      "timeRemaining": 149.83583999999973,
+      "level": 1,
+      "score": 902,
+      "levelScore": 902,
+      "moves": 2,
+      "refund": 0.7931,
+      "resolve": 150,
+      "colorMult": 2.6,
+      "lineMult": 1.76,
+      "totalClusterPoints": 49
+    },
+    {
+      "kind": "drain",
+      "dt": 20,
+      "resolve": 149.99316
+    },
+    {
+      "kind": "outcome",
+      "outcome": "SEAL_BROKEN",
+      "level": 1,
+      "score": 902
+    }
+  ]
+}
