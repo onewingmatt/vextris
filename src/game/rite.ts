@@ -25,7 +25,7 @@
 import { getLevelParams, type LevelParams } from './config'
 import { createRng, type Rng } from './rng'
 import { buildScoringContext, scoreMove } from './scoring'
-import type { ScoringCluster, Vex, VexRank } from './vex'
+import { upgradeVex, type ScoringCluster, type Vex, type VexRank } from './vex'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -113,8 +113,14 @@ export interface Rite {
   lockPiece(): RiteOutcome | null
   /** Compose the scoring pipeline for a clear and apply its effect on the run. */
   applyClear(clear: ClearDescriptor): ClearResult
-  /** Add the shop's pick to the roster. */
+  /** Add a Pact the run has taken. One already held is ignored. */
   takePact(vex: Vex): void
+  /**
+   * Deepen a Pact the run holds, by one rank or more. Returns the Vex's id when
+   * its rank changed and `undefined` otherwise; a Pact this run never took is
+   * left untouched.
+   */
+  upgradePact(vex: Vex, toRank: VexRank): string | undefined
   /** Break the seal: advance the level, re-derive its params, refill Resolve. */
   advanceSeal(): void
   /**
@@ -273,8 +279,28 @@ export function createRite(options: RiteOptions = {}): Rite {
     }
   }
 
+  /**
+   * Add a Pact the run has just taken. One already in the run is ignored, so a
+   * caller cannot double-add and silently double that Pact's contribution to the
+   * drain and the refund.
+   */
   const takePact = (vex: Vex): void => {
+    if (roster.some(taken => taken.id === vex.id)) return
     roster.push(vex)
+  }
+
+  /**
+   * Deepen a Pact the run already holds, and only one it holds: the roster is the
+   * run's, so a Vex it never took is left untouched rather than mutated from
+   * outside the run.
+   *
+   * Returns the Vex's id when its rank actually changed, `undefined` otherwise —
+   * the same channel `upgradeVex` uses, so a caller reads one signal either way
+   * and a refusal is not a special case it has to decode.
+   */
+  const upgradePact = (vex: Vex, toRank: VexRank): string | undefined => {
+    if (!roster.includes(vex)) return undefined
+    return upgradeVex(vex, toRank)
   }
 
   const advanceSeal = (): void => {
@@ -315,6 +341,7 @@ export function createRite(options: RiteOptions = {}): Rite {
     lockPiece,
     applyClear,
     takePact,
+    upgradePact,
     advanceSeal,
     reset,
   }

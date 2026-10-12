@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { rollOffers } from './shop'
+import { describe, it, expect, vi } from 'vitest'
+import { rollOffers, showVexShop, type ShopRun } from './shop'
 import { createRng } from './rng'
-import { createVexJinxed, createVexTremor, type Vex, type VexId } from './vex'
+import { STARTER_VEX_FACTORIES, createVexJinxed, createVexTremor, type Vex, type VexId } from './vex'
 
 const SEED = 20261012
 
@@ -74,5 +74,67 @@ describe('the offer roll is a function of the run', () => {
       late.add(idsOf(rollOffers([], 9, createRng(SEED + i))).join(','))
     }
     expect([...early].join('|')).not.toBe([...late].join('|'))
+  })
+})
+
+describe('the pick goes through the run, not around it', () => {
+  /** Every Pact at rank 1, so the offer pool holds rank-ups only. */
+  const allPacts = (): Vex[] =>
+    (Object.keys(STARTER_VEX_FACTORIES) as VexId[]).map((id) => STARTER_VEX_FACTORIES[id](1))
+
+  const makeRun = (roster: Vex[], level = 3) =>
+    ({
+      roster,
+      level,
+      resolve: 40,
+      resolveMax: 150,
+      rng: createRng(SEED),
+      takePact: vi.fn(),
+      upgradePact: vi.fn(() => 'jinxed'),
+    }) as unknown as ShopRun & {
+      takePact: ReturnType<typeof vi.fn>
+      upgradePact: ReturnType<typeof vi.fn>
+    }
+
+  const clickCard = (idx: number): void => {
+    const card = document.querySelector<HTMLButtonElement>(`button.card[data-offer-idx="${idx}"]`)
+    expect(card, `offer card ${idx} should be rendered`).toBeTruthy()
+    card!.click()
+  }
+
+  it('takes a new Pact through the run, and does not push onto the roster itself', () => {
+    // The shop is handed the run's own roster array, so a direct push would work
+    // by reference and skip the run's guards — and nothing here would notice.
+    const run = makeRun([])
+    const onPick = vi.fn()
+    showVexShop(run, onPick)
+
+    const offered = rollOffers([], 3, createRng(SEED))[0]
+    expect(offered.type).toBe('new')
+    clickCard(0)
+
+    expect(run.takePact).toHaveBeenCalledTimes(1)
+    const taken = run.takePact.mock.calls[0][0] as Vex
+    expect(taken.id).toBe(offered.type === 'new' ? offered.vexId : '')
+    expect(run.roster).toHaveLength(0)
+    expect(onPick).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('#vextris-shop')).toBeNull()
+  })
+
+  it('deepens a held Pact through the run, leaving the Vex untouched itself', () => {
+    const roster = allPacts()
+    const run = makeRun(roster)
+    showVexShop(run, vi.fn())
+
+    const offers = rollOffers(roster, 3, createRng(SEED))
+    expect(offers.every((o) => o.type === 'rankup')).toBe(true)
+    clickCard(0)
+
+    expect(run.upgradePact).toHaveBeenCalledTimes(1)
+    const [vexArg, rankArg] = run.upgradePact.mock.calls[0] as [Vex, number]
+    expect(rankArg).toBe(vexArg.rank + 1)
+    // The spy is the only thing that ran: no rank changed, so nothing reached
+    // past the seam to upgrade a Vex behind the run's back.
+    expect(roster.every((v) => v.rank === 1)).toBe(true)
   })
 })

@@ -450,3 +450,45 @@ describe('the outcome the clear reports, and when the frame acts on it', () => {
     expect(rite.tick(1)).toBe('SEAL_BROKEN')
   })
 })
+
+describe('Pacts enter and deepen through the run', () => {
+  it('adds a Pact, and ignores one the run already holds', () => {
+    const rite = createRite({ seed: SEED })
+    const jinxed = STARTER_VEX_FACTORIES.jinxed(2)
+    rite.takePact(jinxed)
+    expect(rite.roster).toHaveLength(1)
+    // A second take of the same Pact must not stack its rules twice.
+    rite.takePact(STARTER_VEX_FACTORIES.jinxed(2))
+    expect(rite.roster).toHaveLength(1)
+    expect(rite.rankOf('jinxed')).toBe(2)
+  })
+
+  it('deepens a Pact the run holds, and refuses one it never took', () => {
+    const rite = createRite({ seed: SEED })
+    const held = STARTER_VEX_FACTORIES.jinxed(2)
+    rite.takePact(held)
+    // Success reports the Vex's id, matching upgradeVex's own channel.
+    expect(rite.upgradePact(held, 5)).toBe('jinxed')
+    expect(rite.rankOf('jinxed')).toBe(5)
+
+    // A Pact this run never took is left alone rather than mutated from outside,
+    // and says so by reporting nothing changed.
+    const stranger = STARTER_VEX_FACTORIES.tremor(3)
+    expect(rite.upgradePact(stranger, 4)).toBeUndefined()
+    expect(stranger.rank).toBe(3)
+    expect(rite.roster).toHaveLength(1)
+  })
+
+  it('drains by what the roster says, not by what the roster holds', () => {
+    // The roster is load-bearing: quicksand's rank feeds the realtime drain, so
+    // taking it must visibly cost more Resolve over the same elapsed time.
+    const plain = createRite({ seed: SEED })
+    const quicksand = createRite({ seed: SEED })
+    quicksand.takePact(STARTER_VEX_FACTORIES.quicksand(5))
+
+    plain.tick(1000)
+    quicksand.tick(1000)
+    expect(quicksand.resolve).toBeLessThan(plain.resolve)
+    expect(plain.resolve - quicksand.resolve).toBeCloseTo(0.05, 6)
+  })
+})

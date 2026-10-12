@@ -2357,7 +2357,7 @@ export class GameScene extends Phaser.Scene {
     // Fade the board out before the shop overlay appears, fade back in when the level starts.
     this.cameras.main.fadeOut(350, 0, 0, 0)
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      showVexShop(this.rite.roster, this.rite.level, this.rite.resolve, this.rite.resolveMax, this.rite.rng, (result) => {
+      showVexShop(this.rite, (result) => {
         if (result.rankedUpVexId) {
           this.lastRankedUpVexId = result.rankedUpVexId;
           this.lastRankedUpVexTime = this.time.now;

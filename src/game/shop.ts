@@ -4,10 +4,11 @@
  * Renders 3 weighted main offers plus an optional Quicksand bonus slot.
  */
 
-import { STARTER_VEX_FACTORIES, upgradeVex, getQuicksandBonusMultiplier, VEX_SYNERGIES } from './vex'
+import { STARTER_VEX_FACTORIES, getQuicksandBonusMultiplier, VEX_SYNERGIES } from './vex'
 import { audioManager } from './audio'
 import type { Vex, VexId, VexRank, VexRarity } from './vex'
 import type { Rng } from './rng'
+import type { Rite } from './rite'
 
 // Import CSS from separate file for better maintainability
 import '../styles/shop.css'
@@ -275,28 +276,35 @@ export type ShopResult = {
   rankedUpVexId?: string;
 };
 
+/**
+ * What the shop needs from the run it is opening for. A structural slice of the
+ * Rite rather than the whole thing, so the shop cannot reach run state it has no
+ * business touching — and the pick goes through takePact/upgradePact instead of
+ * pushing onto the roster it was handed.
+ */
+export type ShopRun = Pick<
+  Rite,
+  'roster' | 'level' | 'resolve' | 'resolveMax' | 'rng' | 'takePact' | 'upgradePact'
+>;
+
 export function showVexShop(
-  activeVexes: Vex[],
-  completedLevel: number,
-  resolveCurrent: number,
-  resolveMax: number,
-  rng: Rng,
+  run: ShopRun,
   onPick: (result: ShopResult) => void,
 ): void {
   audioManager.playSfx('shopOpen')
 
-  const offers = rollOffers(activeVexes, completedLevel, rng)
-  const quicksandRank = getCurrentQuicksandRank(activeVexes)
-  const quicksandTiers = buildQuicksandTierStates(resolveCurrent, resolveMax, quicksandRank)
+  const offers = rollOffers(run.roster, run.level, run.rng)
+  const quicksandRank = getCurrentQuicksandRank(run.roster)
+  const quicksandTiers = buildQuicksandTierStates(run.resolve, run.resolveMax, quicksandRank)
 
   const overlay = document.createElement('div')
   overlay.id = 'vextris-shop'
   overlay.innerHTML = `
     <div class="shop-inner">
       <h2>The Crossroads</h2>
-      <div class="shop-subtitle">SEAL ${completedLevel} BROKEN - CHOOSE YOUR PACT</div>
+      <div class="shop-subtitle">SEAL ${run.level} BROKEN - CHOOSE YOUR PACT</div>
       <div class="cards">
-        ${offers.map((o, i) => renderCard(o, i, activeVexes)).join('')}
+        ${offers.map((o, i) => renderCard(o, i, run.roster)).join('')}
       </div>
       ${renderQuicksandSlot(quicksandTiers, quicksandRank)}
     </div>
@@ -339,10 +347,10 @@ export function showVexShop(
       if (!offer) return
 
       audioManager.playSfx('uiClick')
-      const rankedUpVexId = applyOffer(offer, activeVexes)
+      const rankedUpVexId = applyOffer(offer, run)
 
       if (selectedQuicksandTier > 0) {
-        applyQuicksandBonus(activeVexes, selectedQuicksandTier as 1 | 2 | 3)
+        applyQuicksandBonus(run, selectedQuicksandTier as 1 | 2 | 3)
       }
 
       overlay.remove()
@@ -438,31 +446,37 @@ function renderCard(offer: ShopOffer, idx: number, activeVexes: Vex[] = []): str
   `
 }
 
-function applyOffer(offer: ShopOffer, activeVexes: Vex[]): string | undefined {
+/**
+ * Apply the picked offer to the run. The mutation goes THROUGH the run: the
+ * roster is the run's, so the run is what adds to it and what deepens a Pact in
+ * it. Pushing onto the array here would work by reference and quietly skip the
+ * run's guards.
+ */
+function applyOffer(offer: ShopOffer, run: ShopRun): string | undefined {
   if (offer.type === 'new') {
     const newVex = STARTER_VEX_FACTORIES[offer.vexId](1)
-    activeVexes.push(newVex)
+    run.takePact(newVex)
     newVex.onApply?.(1)
     return undefined
   } else {
-    return upgradeVex(offer.vex, offer.toRank)
+    return run.upgradePact(offer.vex, offer.toRank)
   }
 }
 
-function applyQuicksandBonus(activeVexes: Vex[], ranksToAdd: 1 | 2 | 3): string | undefined {
-  const quicksand = activeVexes.find((v) => v.id === 'quicksand')
+function applyQuicksandBonus(run: ShopRun, ranksToAdd: 1 | 2 | 3): string | undefined {
+  const quicksand = run.roster.find((v) => v.id === 'quicksand')
 
   if (!quicksand) {
     const targetRank = clampVexRank(ranksToAdd)
     const newQuicksand = STARTER_VEX_FACTORIES.quicksand(targetRank)
-    activeVexes.push(newQuicksand)
+    run.takePact(newQuicksand)
     newQuicksand.onApply?.(targetRank)
     return undefined
   }
 
   if (quicksand.rank >= 10) return undefined
   const targetRank = clampVexRank(quicksand.rank + ranksToAdd)
-  return upgradeVex(quicksand, targetRank)
+  return run.upgradePact(quicksand, targetRank)
 }
 
 // CSS is now imported via the import statement at the top of the file.
