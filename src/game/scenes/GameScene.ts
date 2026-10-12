@@ -29,6 +29,7 @@ import {
   getPressureTimeLimit,
 } from '../vex'
 import { createRite, type Rite } from '../rite'
+import type { RiteTraceEvent, TraceEvent } from '../trace'
 import { showVexShop } from '../shop'
 import { DevPanel } from '../devPanel'
 import { updateVexBar } from '../vexBar'
@@ -177,7 +178,7 @@ export class GameScene extends Phaser.Scene {
   // Verification trace (?trace=1): records the rules events that a replay must
   // reproduce. Off unless the flag is present, so it costs nothing in play.
   private tracing = false
-  private traceLog: Record<string, unknown>[] = []
+  private traceLog: TraceEvent[] = []
 
   /** Dev panel (dev builds only) — backtick to open/close */
   private devPanel?: DevPanel
@@ -210,10 +211,14 @@ export class GameScene extends Phaser.Scene {
     super({ key: 'GameScene' })
   }
 
-  /** Append a rules event to the verification trace. No-op unless ?trace=1. */
-  private record(kind: string, data: Record<string, unknown>): void {
+  /**
+   * Append a rules event to the verification trace. No-op unless ?trace=1.
+   * Typed by the shared event shape, so a field the fixture and the replay expect
+   * cannot be left out here without failing the compile.
+   */
+  private record(event: RiteTraceEvent): void {
     if (!this.tracing) return
-    this.traceLog.push({ kind, ...data })
+    this.traceLog.push(event)
   }
 
   private rebuildChipIndex(): void {
@@ -972,7 +977,7 @@ export class GameScene extends Phaser.Scene {
     // driver step the scene by hand once the game loop is asleep.
     this.tracing = new URLSearchParams(window.location.search).has('trace')
     if (this.tracing) {
-      ;(window as unknown as { __vextrisTrace?: Record<string, unknown>[] }).__vextrisTrace = this.traceLog
+      ;(window as unknown as { __vextrisTrace?: TraceEvent[] }).__vextrisTrace = this.traceLog
     }
 
     // Dev panel (backtick to toggle) is always available, but it only auto-opens when ?dev is present.
@@ -1341,7 +1346,7 @@ export class GameScene extends Phaser.Scene {
     // The frame does not act on the outcome: it has always checked the run on
     // the following tick, and asking here would break the seal a frame early.
     this.rite.lockPiece()
-    this.record('lock', { resolve: this.rite.resolve })
+    this.record({ kind: 'lock', resolve: this.rite.resolve })
 
     audioManager.playSfx('lock')
     const quicksandRank = this.getActiveVexRank('quicksand')
@@ -1898,7 +1903,8 @@ export class GameScene extends Phaser.Scene {
 
         audioManager.playSfx('lineClear', { linesCleared })
 
-        this.record('clear', {
+        this.record({
+          kind: 'clear',
           lines: linesCleared,
           clusters: this.scoringClusters.map(c => ({ color: c.color, size: c.blocks.length })),
           maxClusterSize: cleared.maxClusterSize,
@@ -2114,7 +2120,7 @@ export class GameScene extends Phaser.Scene {
     // The Rite drains and reports the run's state from the same two conditions
     // the frame used to evaluate by hand: the seal first, then Resolve.
     const drained = this.rite.tick(frameDelta)
-    this.record('drain', { dt: frameDelta, resolve: this.rite.resolve })
+    this.record({ kind: 'drain', dt: frameDelta, resolve: this.rite.resolve })
 
     if (drained === 'SEAL_BROKEN') {
       this.onLevelComplete();
@@ -2344,7 +2350,7 @@ export class GameScene extends Phaser.Scene {
    * Pauses the game and opens the Vex shop. On card pick, advances the level.
    */
   private onLevelComplete(): void {
-    this.record('outcome', { outcome: 'SEAL_BROKEN', level: this.rite.level, score: this.rite.score })
+    this.record({ kind: 'outcome', outcome: 'SEAL_BROKEN', level: this.rite.level, score: this.rite.score })
     this.gameState = 'SHOP'
     audioManager.playSfx('levelClear')
 
@@ -2398,7 +2404,7 @@ export class GameScene extends Phaser.Scene {
    * Currently triggers game over; can later be wired to a retry flow.
    */
   private onLevelFailed(): void {
-    this.record('outcome', { outcome: 'RESOLVE_FADED', level: this.rite.level, score: this.rite.score })
+    this.record({ kind: 'outcome', outcome: 'RESOLVE_FADED', level: this.rite.level, score: this.rite.score })
     this.gameState = 'GAMEOVER'
     this.saveRunHistory()
     this.gameOverBg.setVisible(true)

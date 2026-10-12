@@ -21,6 +21,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createRite, type Rite } from './rite'
+import type { RiteTraceEvent } from './trace'
 import {
   STARTER_VEX_FACTORIES,
   type ScoringCluster,
@@ -32,33 +33,11 @@ import {
 // The fixture's shape
 // ---------------------------------------------------------------------------
 
-type TraceEvent =
-  | { kind: 'drain'; dt: number; resolve: number }
-  | {
-      kind: 'clear'
-      lines: number
-      clusters: { color: number; size: number }[]
-      maxClusterSize: number
-      moveIndex: number
-      combo: number
-      timeRemaining: number
-      level: number
-      score: number
-      levelScore: number
-      moves: number
-      refund: number
-      resolve: number
-      colorMult: number
-      lineMult: number
-      totalClusterPoints: number
-    }
-  | { kind: 'lock'; resolve: number }
-  | { kind: 'outcome'; outcome: 'SEAL_BROKEN' | 'RESOLVE_FADED'; level: number; score: number }
-
 type Fixture = {
   program: 'fade' | 'seal' | 'locks'
   roster: { id: string; rank: number }[]
-  trace: TraceEvent[]
+  /** The shared event shape (src/game/trace.ts) — the same one the scene records. */
+  trace: RiteTraceEvent[]
 }
 
 /**
@@ -104,7 +83,7 @@ const PROGRAMS = {
 type Divergence = { index: number; field: string; expected: unknown; actual: unknown }
 
 /** The clusters the recorder arranged; only the size is scored, so cells are placeholders. */
-const clustersOf = (ev: Extract<TraceEvent, { kind: 'clear' }>): ScoringCluster[] =>
+const clustersOf = (ev: Extract<RiteTraceEvent, { kind: 'clear' }>): ScoringCluster[] =>
   ev.clusters.map(c => ({
     color: c.color,
     blocks: Array.from({ length: c.size }, (_, i) => ({ x: i, y: 0 })),
